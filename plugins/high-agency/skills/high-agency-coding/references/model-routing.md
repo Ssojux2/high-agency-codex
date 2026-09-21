@@ -1,0 +1,86 @@
+# Adaptive Model and Reasoning Routing — Codex
+
+Load this reference only when delegation is justified by the parent skill.
+
+## Principle
+
+Use the **cheapest/fastest configuration that can reliably do the subtask**, while keeping the strongest reasoning at high-leverage decision points.
+
+Do not switch models merely because multiple models exist. Context handoff has a cost.
+
+The main thread keeps integration authority. Prefer native Codex subagents with an explicit model and reasoning effort when supported. Do **not** launch nested `codex exec` processes only to change models.
+
+If a requested model is unavailable, use the nearest available capability tier or the current model and continue.
+
+## Routing table
+
+| Subtask | Preferred model | Effort | Notes |
+|---|---|---|---|
+| Mechanical search, grep, file inventory, command execution, simple test reporting | `gpt-5.6-luna` | low–medium | Cheap, bounded, repetitive work |
+| Large codebase mapping, dependency tracing, docs/API lookup, first-pass test triage | `gpt-5.6-terra` | medium | Read-heavy work where breadth matters |
+| Normal implementation, refactor, integration, focused debugging | `gpt-5.6-sol` | medium–high | Default delegated builder |
+| Complex architecture, ambiguous multi-system plan, difficult root cause, security-critical reasoning, final synthesis when consequences are high | `gpt-6-astra` | high–xhigh | Use only at leverage points |
+| Extremely hard unresolved reasoning after strong attempts | `gpt-6-astra` | max | Rare; do not make this the default |
+
+Astra supports `low|medium|high|xhigh|max`; GPT-5.6 models also support lower effort levels. Never request an unsupported effort.
+
+## Stage guidance
+
+### Planning / architecture
+
+- Local and obvious: current main model; no subagent.
+- Normal multi-step: Sol high, or current model if already equally capable.
+- Broad repo mapping first: Terra medium; return interfaces, dependencies, and unknowns only.
+- High-impact or ambiguous architecture: Astra high/xhigh for a concise decision memo, then return implementation to the main thread/Sol.
+
+Do not use Astra to write a routine plan.
+
+### Implementation
+
+- Small bounded edit: current model directly.
+- Standard implementation: current model or Sol medium/high.
+- Mechanical repeated edits with a precise transformation: Terra medium; Luna only if the transformation is deterministic and easy to verify.
+- Cross-cutting/novel implementation where design and code are tightly coupled: Sol high; Astra only if the hard reasoning cannot be isolated from implementation.
+
+Avoid multiple writing agents touching overlapping files.
+
+### Testing / verification
+
+- Running commands and summarizing results: Luna low.
+- Mapping failures to likely affected areas: Terra medium.
+- Non-obvious failure triage: Terra high or Sol high.
+- Deep failure after two evidence-based attempts: escalate once to Sol/Astra rather than adding blind iterations.
+
+The main thread decides whether evidence proves the acceptance criteria.
+
+### Review
+
+- Small local change: no extra reviewer.
+- Conditional focused review: Terra high or Sol high.
+- Security/auth/schema/high-impact architecture: Astra high for the risky surface only.
+
+## Effort policy
+
+- **low** — deterministic or mechanical work.
+- **medium** — normal bounded reasoning.
+- **high** — complex logic, debugging, review, integration.
+- **xhigh** — ambiguous/high-impact reasoning where missing an edge case is costly.
+- **max** — rare last escalation for the hardest unresolved cognition.
+
+Start lower when success is easy to verify. Escalate effort before escalating model only when the current model is otherwise appropriate.
+
+## Parallelism
+
+Use at most the few independent agents that materially shorten the critical path.
+
+Good parallel work:
+- two independent read-only investigations;
+- codebase map + external API/docs verification;
+- targeted test execution + independent static analysis when both are already required.
+
+Bad parallel work:
+- multiple agents editing the same module;
+- planner + reviewer + implementer for a one-file fix;
+- four agents answering the same question.
+
+Return only findings, decisions, file references, commands, and evidence needed by the integrator.
