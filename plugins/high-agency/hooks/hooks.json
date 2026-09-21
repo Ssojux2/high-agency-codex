@@ -1,0 +1,17 @@
+{
+  "description": "Opt-in bounded continuation for the bounded-autonomy skill.",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${PLUGIN_ROOT}/hooks/stop_loop.py",
+            "timeout": 2,
+            "statusMessage": "Checking bounded autonomy"
+          }
+        ]
+      }
+    ]
+  }
+}
