@@ -17,7 +17,7 @@ class CodexDoctorContractTests(unittest.TestCase):
         text = DOCTOR.read_text(encoding="utf-8")
         self.assertIn("agents.enabled", text)
         self.assertIn("allow_managed_hooks_only", text)
-        self.assertIn("default_subagent_model", text)
+        self.assertIn("default_subagent_model", text)\n        self.assertIn("hook trust", text)
 
     def test_model_probes_are_opt_in(self):
         text = DOCTOR.read_text(encoding="utf-8")
