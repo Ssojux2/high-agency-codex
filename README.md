@@ -2,7 +2,7 @@
 
 High Agency is a lightweight coding scaffold designed to use the LLM's own capability first, then spend extra process, stronger models, or deeper reasoning only where they materially improve correctness.
 
-Current version: **0.7.0**
+Current version: **0.8.0**
 
 ## Install
 
@@ -46,6 +46,8 @@ The main thread remains the integrator.
 
 The detailed routing table lives in `skills/high-agency-coding/references/model-routing.md` and is loaded only when delegation is justified.
 
+Explicit fallback chains keep work moving when a preferred delegated model is unavailable: Luna→Terra→main for mechanical work, Terra→Sol→main for mapping, Sol→main for implementation, and Astra→Sol→main for hard reasoning.
+
 ## Reasoning policy
 
 Reasoning effort is treated as a budget:
@@ -57,6 +59,25 @@ Reasoning effort is treated as a budget:
 - max — rare final escalation.
 
 High Agency prefers increasing effort or model quality at a cognitive bottleneck before adding blind loop iterations.
+
+## Doctor
+
+Run:
+
+```text
+$high-agency-doctor
+```
+
+The doctor is read-only. It checks CLI/Python/Git availability and only safe routing-related Codex settings such as the current configured model/effort, `agents.enabled`, subagent defaults/concurrency, and `allow_managed_hooks_only`.
+
+Important diagnostics:
+
+- `agents.enabled = false` → adaptive routing is disabled; High Agency stays single-agent.
+- `allow_managed_hooks_only = true` → bundled plugin hooks may be skipped unless deployed as managed hooks.
+- account/provider model availability is reported as **UNVERIFIED** unless the user explicitly requests a bounded model probe.
+- session CLI overrides may differ from config; use `/status` for the live session view.
+
+Doctor never probes every model by default.
 
 ## Verification
 
