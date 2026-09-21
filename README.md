@@ -1,14 +1,8 @@
 # High Agency for Codex
 
-A lightweight Codex plugin focused on high-agency coding without process-heavy ceremony.
+A lightweight coding scaffold that keeps the useful parts of strict workflows—clear completion criteria, evidence, iteration, and review—without making planning, TDD, subagents, full-suite tests, or review stages mandatory.
 
-Current version: **0.4.0**
-
-It provides:
-
-- `$high-agency-coding` — define done → act → verify affected scope → repair → finish
-- `$bounded-autonomy` — opt-in bounded continuation
-- lightweight hooks that track edits/verification only when High Agency is explicitly requested
+Current version: **0.5.0**
 
 ## Install
 
@@ -16,35 +10,79 @@ It provides:
 codex plugin marketplace add Ssojux2/high-agency-codex
 ```
 
-Then open `/plugins`, install **high-agency**, and review/trust the bundled hooks in `/hooks`.
+Then open `/plugins`, install **high-agency**, and review/trust the bundled hooks.
 
-## Targeted verification
+## Skills
 
-High Agency now defaults to the smallest verification scope that can falsify the change:
+- `$high-agency-coding` — define done → implement → verify touched/affected scope → conditionally review diff → finish.
+- `$bounded-autonomy` — progress-gated iteration with a small dynamic pass budget.
 
-1. touched scope
-2. affected/related scope
-3. full package/workspace only when risk justifies escalation
+## Lightweight verification
 
-It prefers repository-native selective mechanisms such as related/changed/affected tests when already available. It does not install a new test-selection dependency just for this optimization.
+Verification expands only when risk expands:
 
-The Stop hook does **not** automatically run tests. When High Agency was explicitly requested, it records edits and verification commands. If code/config was edited but no verification command was observed, it blocks stopping once and asks Codex to run the narrowest relevant check. Documentation-only edits are ignored by this guard.
+```text
+local change → targeted check
+             → affected/related check only if propagation risk exists
+             → full check only for broad/release-critical risk
+```
+
+Still-valid verification is reused until a relevant later edit invalidates it. Independent read-only checks may run in parallel when both are already necessary.
+
+## Conditional final diff review
+
+A final diff review is **not** required for every small fix. The Stop hook asks for a focused final diff only when one or more risk signals are present:
+
+- 3+ code/config files changed;
+- changes cross module/package boundaries;
+- schema/migration, dependency/lockfile, build/deploy config, auth/security/permissions changed;
+- final diff is large (currently 120+ changed lines when Git can measure it).
+
+The hook uses files touched during the High Agency turn and asks for a focused `git diff`, not a reviewer subagent or whole-branch review.
+
+If an edit occurs after verification or diff review, the relevant evidence is invalidated and must be refreshed.
 
 ## Bounded autonomy
 
-Default: up to 3 additional passes. Hard cap: 12.
+Use the smallest useful budget:
 
-Each pass should use targeted verification first. A new pass is requested only after meaningful progress. The final pass cannot request another continuation.
+- local/narrow fix: `max=1`;
+- normal multi-step work: `max=3`;
+- more than 3 only when clearly justified or explicitly requested;
+- hard cap: 12.
+
+The loop continues only after meaningful progress. The final allowed pass cannot request another pass.
+
+## Why lighter than Superpowers and Ralph
+
+| Concern | Superpowers / Ralph | High Agency |
+|---|---|---|
+| Planning | Superpowers uses formal design/plan stages | minimal outcome contract; plan only on uncertainty |
+| TDD | mandatory in Superpowers | optional; tests chosen by information value |
+| Worktree/subagents | often structured into workflow | only when isolation/parallelism materially helps |
+| Review | task/branch reviews can be mandatory | focused final diff only on risk signals |
+| Test scope | strong verification, often workflow-wide | touched → affected → full only on escalation |
+| Iteration | Ralph repeats until promise/max | progress-gated, usually 1 or 3 extra passes |
+| Repeated checks | workflow stages may repeat checks | reuse evidence until relevant inputs change |
+
+The goal is not to win by doing less. It is to spend process only where it changes the probability of a correct result.
+
+## Hooks
+
+The hooks are active only when the user explicitly invokes High Agency in the prompt. They track edits, verification commands, and focused diff inspection.
+
+They do **not** automatically execute project tests or launch review agents.
 
 ## Evals
 
-See `evals/`.
-
-Use the same task/model/effort/repository state for each variant and compare no-skill vs High Agency. Record correctness, verification quality, scope discipline, autonomy, tool/token efficiency, false completion, and no-progress loops.
+`evals/` contains a rubric, scenario set, scorer, and four-way comparison plan.
 
 ```bash
-python3 evals/score.py evals/example-result.json
+python3 evals/score.py results.json > scored.json
+python3 evals/compare.py scored.json
 ```
+
+Compare the same task/repository/model/effort across `no-skill`, `high-agency`, `superpowers`, and `ralph`.
 
 ## License
 
