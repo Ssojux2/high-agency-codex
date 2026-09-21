@@ -2,85 +2,60 @@
 
 This benchmark measures model-facing workflow instruction footprint, not end-to-end coding quality.
 
-## v0.7 progressive disclosure
+## v0.8 progressive disclosure
 
-High Agency v0.7 moved model-routing detail out of the core skill. The routing reference is read only when delegation has a real trigger.
+High Agency keeps the ordinary coding path small. Diagnostics and model-routing details are optional resources.
 
 | Codex path | Model-facing workflow words |
 |---|---:|
 | High Agency core | **648** |
-| High Agency core + bounded autonomy | **900** |
-| High Agency core + adaptive routing reference | **1,260** |
-| High Agency bounded + adaptive routing reference | **1,512** |
+| Core + bounded autonomy | **900** |
+| Core + adaptive routing reference | **1,577** |
+| Bounded + adaptive routing reference | **1,829** |
+| Doctor skill, opt-in only | **462** |
 | Superpowers measured bug-fix path | 3,987 |
 | Superpowers measured feature path | 5,160 |
 | Ralph command scaffold | 129 |
 
 Compared with the measured Superpowers paths:
 
-- High Agency core is **83.7% smaller** than the bug-fix path and **87.4% smaller** than the feature path.
-- High Agency bounded is **77.4% / 82.6% smaller**.
-- Even when the optional model-routing reference is loaded, normal High Agency is **68.4% / 75.6% smaller**.
-- Bounded + routing remains **62.1% / 70.7% smaller**.
+- core: **83.7% / 87.4% smaller**;
+- bounded: **77.4% / 82.6% smaller**;
+- core + routing: **60.4% / 69.4% smaller**;
+- bounded + routing: **54.1% / 64.6% smaller**.
 
-The v0.6 core was 1,163 words, so v0.7's ordinary core path is about **44% smaller** while adding optional multi-model routing through progressive disclosure.
+Doctor is not part of normal coding context. The fallback/fan-out/handoff rules live in the routing reference and are loaded only when delegation is justified.
 
-Ralph's command scaffold is much smaller than High Agency. That comparison is intentionally shown rather than hidden: Ralph spends very little fixed instruction but relies on repeated iterations; High Agency spends more fixed instruction on outcome/evidence/routing/stopping rules and tries to reduce unnecessary passes.
+Ralph remains much smaller as a fixed scaffold; its trade-off is repeated iteration rather than richer verification/routing policy.
 
 ## Method
 
-Whitespace-separated word counts from model-facing workflow files:
+Whitespace-separated words from model-facing files. Hook code, Git snapshot code, tests, and benchmark/eval files are excluded because they do not enter the normal model context.
 
-High Agency:
-- core = `skills/high-agency-coding/SKILL.md`
-- bounded = core + `skills/bounded-autonomy/SKILL.md`
-- routing = core + `skills/high-agency-coding/references/model-routing.md`
+Superpowers comparison paths:
+- bug-fix: using-superpowers + systematic-debugging + test-driven-development + verification-before-completion;
+- feature: using-superpowers + brainstorming + test-driven-development + verification-before-completion.
 
-Superpowers bug-fix path:
-- `using-superpowers`
-- `systematic-debugging`
-- `test-driven-development`
-- `verification-before-completion`
+Ralph: official ralph-loop command scaffold only.
 
-Superpowers feature path:
-- `using-superpowers`
-- `brainstorming`
-- `test-driven-development`
-- `verification-before-completion`
+These are word-count/process-footprint numbers, not tokenizer counts, success rates, or cost claims.
 
-Ralph:
-- official `ralph-loop.md` command scaffold only
+## v0.8 control-flow intent
 
-Hook source code is excluded because it executes outside model context. Repeated Ralph prompts and platform-level agent/system prompts are also excluded.
-
-These are word counts, not tokenizer counts.
-
-## Control-flow intent
-
-| Behavior | High Agency v0.7 |
+| Behavior | High Agency |
 |---|---|
-| Default execution | current model, single agent |
-| Planning | short in-context only when uncertainty needs it |
-| Stronger model | only at high-leverage cognitive bottlenecks |
-| Cheap model | bounded mechanical/read-heavy/test tasks |
-| TDD | optional |
-| Verification | touched → affected → broad on risk |
-| Review | conditional focused diff |
-| Iteration | progress-gated; typically max 1 or 3 |
-| Evidence reuse | yes, until relevant edits invalidate it |
-| Shell/generator edits | Git snapshot guard |
+| Default | current model, single agent |
+| Delegation | only on leverage triggers |
+| Concurrent delegated agents | default cap 2 |
+| Recursive delegation | discouraged; root owns orchestration |
+| Handoff | compact goal/evidence/constraints/return/stop packet |
+| Planning | short in-context unless uncertainty warrants more |
+| Testing | touched → affected → broad on risk |
+| Review | focused diff only on risk |
+| Iteration | progress-gated, usually max 1 or 3 |
+| Diagnostics | separate read-only doctor |
+| Fallback | explicit model chains, then current main model |
 
 ## End-to-end status
 
-No task-success or token-cost advantage is claimed from this structural benchmark.
-
-A valid quality benchmark must hold constant:
-- repository snapshot;
-- task;
-- model availability;
-- main model and effort;
-- permissions;
-- budget;
-- repetitions.
-
-Use `evals/` for those runs.
+No task-success or token-cost advantage is claimed until equal-model/equal-budget runs are performed. Use evals/ for those comparisons.
