@@ -1,40 +1,14 @@
 {
-  "description": "Lightweight High Agency state tracking, targeted verification guard, and bounded continuation.",
+  "description": "Lightweight High Agency state tracking, targeted verification guard, conditional final diff review, and bounded continuation.",
   "hooks": {
     "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${PLUGIN_ROOT}/hooks/verification_state.py",
-            "timeout": 1
-          }
-        ]
-      }
+      {"hooks":[{"type":"command","command":"python3 ${PLUGIN_ROOT}/hooks/verification_state.py","timeout":1}]}
     ],
     "PostToolUse": [
-      {
-        "matcher": "Bash|Edit|Write|apply_patch",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${PLUGIN_ROOT}/hooks/verification_state.py",
-            "timeout": 1
-          }
-        ]
-      }
+      {"matcher":"Bash|Edit|Write|apply_patch","hooks":[{"type":"command","command":"python3 ${PLUGIN_ROOT}/hooks/verification_state.py","timeout":1}]}
     ],
     "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${PLUGIN_ROOT}/hooks/stop_loop.py",
-            "timeout": 2,
-            "statusMessage": "Checking High Agency completion"
-          }
-        ]
-      }
+      {"hooks":[{"type":"command","command":"python3 ${PLUGIN_ROOT}/hooks/stop_loop.py","timeout":2,"statusMessage":"Checking High Agency completion"}]}
     ]
   }
 }
