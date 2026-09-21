@@ -1,6 +1,29 @@
 {
-  "description": "Opt-in bounded continuation for the bounded-autonomy skill.",
+  "description": "Lightweight High Agency state tracking, targeted verification guard, and bounded continuation.",
   "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${PLUGIN_ROOT}/hooks/verification_state.py",
+            "timeout": 1
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|Edit|Write|apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${PLUGIN_ROOT}/hooks/verification_state.py",
+            "timeout": 1
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
@@ -8,7 +31,7 @@
             "type": "command",
             "command": "python3 ${PLUGIN_ROOT}/hooks/stop_loop.py",
             "timeout": 2,
-            "statusMessage": "Checking bounded autonomy"
+            "statusMessage": "Checking High Agency completion"
           }
         ]
       }
