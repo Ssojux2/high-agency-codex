@@ -16,11 +16,22 @@ For each pass:
 1. Re-read the user's goal, acceptance criteria, and current repository state.
 2. Identify the highest-value unresolved acceptance criterion.
 3. Make one coherent, independently verifiable unit of progress.
-4. Run fresh relevant verification.
-5. Decide whether the pass produced meaningful new progress.
-6. Continue only when more work is both necessary and actionable.
+4. Run the narrowest relevant verification for the files or behavior changed in this pass.
+5. Broaden verification only when dependency or integration risk requires it.
+6. Decide whether the pass produced meaningful new progress.
+7. Continue only when more work is both necessary and actionable.
 
 Prefer direct work over status narration. Do not create long progress files. The repository, tests, diff, and current conversation are the primary state.
+
+## Verification budget
+
+Use targeted verification by default.
+
+Prefer the closest relevant test, package, module, lint, typecheck, build target, or runtime probe. Use affected/related test mechanisms already available in the repository.
+
+Escalate to broader checks only for shared APIs, common dependencies, schema/migration/config changes, unclear dependency impact, integration failures, real interface boundaries, release-critical work, or an explicit user request.
+
+Do not run the full suite merely because another pass started.
 
 ## Progress gate
 
@@ -45,7 +56,7 @@ If meaningful progress occurred, work remains, and the next step is actionable, 
 
 `<!-- high-agency:continue max=3 -->`
 
-The bundled Codex Stop hook recognizes this marker and starts another continuation pass in the same turn.
+The bundled Stop hook recognizes this marker and starts another continuation pass in the same turn.
 
 - `max` is the maximum number of additional continuation passes.
 - Default to `max=3`.
@@ -78,4 +89,4 @@ When blocked, state the blocker and the smallest user action needed to unblock i
 
 ## Interaction with coding work
 
-When changing code, use the same lightweight principles as `high-agency-coding`: define done, act in independently verifiable steps, verify real behavior, repair from evidence, and finish without scope drift.
+When changing code, use the same lightweight principles as `high-agency-coding`: define done, act in independently verifiable steps, verify the affected scope first, escalate only when justified, repair from evidence, and finish without scope drift.
