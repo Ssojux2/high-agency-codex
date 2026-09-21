@@ -1,6 +1,6 @@
 {
   "name": "high-agency",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Lightweight high-agency coding and bounded autonomous iteration for Codex.",
   "skills": "./skills/",
   "hooks": "./hooks/hooks.json"
