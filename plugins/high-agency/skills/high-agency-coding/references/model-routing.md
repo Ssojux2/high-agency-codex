@@ -98,3 +98,28 @@ Do not block the task because a preferred delegated model is unavailable. Preser
 If multi-agent tools are disabled, skip the chain entirely and continue single-agent with the current model.
 
 Do not silently substitute a weaker model while claiming the stronger model ran. Report the fallback only when it materially affects confidence or cost.
+
+
+## Delegation budget
+
+Keep the agent tree shallow.
+
+- The main/root agent owns delegation by default.
+- Child agents should not recursively spawn more agents unless the root explicitly assigns a task that genuinely requires another independent branch.
+- Default to **at most 2 concurrent delegated agents**.
+- Use 3 only when there are 3 clearly independent workstreams and the expected wall-clock/quality gain exceeds context duplication.
+- Never fill available concurrency slots just because they exist.
+
+When the runtime exposes context-fork controls, propagate the smallest context that preserves correctness. Prefer a compact task message over full-history duplication unless the subtask truly depends on the entire conversation.
+
+## Handoff packet
+
+A delegated task should normally contain only:
+
+1. **Goal** — one bounded question or deliverable.
+2. **Relevant evidence** — exact files, symbols, errors, or observations already known.
+3. **Constraints** — what not to change and any permissions/risk boundary.
+4. **Expected return** — findings, bounded patch, command result, or decision.
+5. **Stop condition** — when the subagent should return instead of broadening scope.
+
+Do not send the entire problem statement and repo history to every agent by default.
