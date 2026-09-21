@@ -16,13 +16,23 @@ MARKER_RE = re.compile(
 DEFAULT_MAX = 3
 HARD_CAP = 12
 STATE_TTL_SECONDS = 7 * 24 * 60 * 60
+DOC_EXTS = {".md", ".mdx", ".txt", ".rst", ".adoc", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".ico"}
+DOC_NAMES = {"LICENSE", "README", "CHANGELOG", "CONTRIBUTING", "CODE_OF_CONDUCT"}
 
 def emit(payload: dict) -> None:
     sys.stdout.write(json.dumps(payload, separators=(",", ":")) + "\n")
 
-def state_path(plugin_data: Path, turn_id: str) -> Path:
+def data_root() -> Path:
+    return Path(os.environ.get("PLUGIN_DATA") or ".").resolve()
+
+def state_path(turn_id: str) -> Path:
     digest = hashlib.sha256(turn_id.encode("utf-8", "replace")).hexdigest()[:24]
-    return plugin_data / "bounded-autonomy" / f"{digest}.json"
+    return data_root() / "bounded-autonomy" / f"{digest}.json"
+
+def verification_path(payload: dict) -> Path:
+    raw = str(payload.get("turn_id") or payload.get("session_id") or "default")
+    safe = re.sub(r"[^A-Za-z0-9_.-]", "_", raw)[:120]
+    return data_root() / "verification" / f"{safe}.json"
 
 def cleanup_old_states(directory: Path) -> None:
     if not directory.exists():
@@ -35,35 +45,47 @@ def cleanup_old_states(directory: Path) -> None:
         except OSError:
             pass
 
-def load_count(path: Path) -> int:
+def load_json(path: Path) -> dict:
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-        return max(0, int(data.get("continuations", 0)))
-    except (OSError, ValueError, TypeError, json.JSONDecodeError):
-        return 0
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
 
-def save_count(path: Path, count: int, limit: int) -> None:
+def save_json(path: Path, data: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
-    tmp.write_text(
-        json.dumps(
-            {"continuations": count, "limit": limit, "updated_at": int(time.time())},
-            separators=(",", ":"),
-        ),
-        encoding="utf-8",
-    )
+    tmp.write_text(json.dumps(data, separators=(",", ":")), encoding="utf-8")
     tmp.replace(path)
 
-def clear_state(path: Path) -> None:
+def clear(path: Path) -> None:
     try:
         path.unlink(missing_ok=True)
     except OSError:
         pass
 
+def needs_verification(files: list[str]) -> bool:
+    for raw in files:
+        name = Path(raw).name
+        if name.upper() in DOC_NAMES or name.startswith("README"):
+            continue
+        if Path(raw).suffix.lower() in DOC_EXTS:
+            continue
+        return True
+    return False
+
+def reset_pass(vpath: Path, data: dict) -> None:
+    if not data.get("active"):
+        return
+    data["edited_files"] = []
+    data["verification_seen"] = False
+    data["verification_commands"] = []
+    data["guard_warned"] = False
+    save_json(vpath, data)
+
 def main() -> int:
     try:
         payload = json.load(sys.stdin)
-    except (json.JSONDecodeError, OSError):
+    except Exception:
         emit({})
         return 0
 
@@ -73,46 +95,80 @@ def main() -> int:
         emit({})
         return 0
 
-    plugin_data = Path(os.environ.get("PLUGIN_DATA") or ".").resolve()
-    state_dir = plugin_data / "bounded-autonomy"
-    cleanup_old_states(state_dir)
-    path = state_path(plugin_data, turn_id)
+    cleanup_old_states(data_root() / "bounded-autonomy")
+    cleanup_old_states(data_root() / "verification")
 
-    match = MARKER_RE.search(message)
-    if not match:
-        clear_state(path)
+    bpath = state_path(turn_id)
+    vpath = verification_path(payload)
+    vdata = load_json(vpath)
+    marker = MARKER_RE.search(message)
+
+    edited_files = list(vdata.get("edited_files") or [])
+    if (
+        vdata.get("active")
+        and needs_verification(edited_files)
+        and not vdata.get("verification_seen")
+        and not vdata.get("guard_warned")
+    ):
+        vdata["guard_warned"] = True
+        save_json(vpath, vdata)
+        suffix = ""
+        if marker:
+            requested = int(marker.group(1)) if marker.group(1) else DEFAULT_MAX
+            limit = min(max(requested, 1), HARD_CAP)
+            suffix = (
+                f" If meaningful work still remains after verification, preserve the bounded-autonomy "
+                f"contract and end with <!-- high-agency:continue max={limit} -->."
+            )
+        emit({
+            "decision": "block",
+            "reason": (
+                "High Agency verification guard: code/config edits were detected but no verification "
+                "command was observed in this pass. Run the narrowest relevant verification for the "
+                "touched or affected scope first. Prefer related/affected tests, package/module checks, "
+                "or a focused runtime probe. Do not run the full suite unless dependency or integration "
+                "risk justifies it." + suffix
+            )
+        })
+        return 0
+
+    if not marker:
+        clear(bpath)
+        clear(vpath)
         emit({})
         return 0
 
-    requested = int(match.group(1)) if match.group(1) else DEFAULT_MAX
+    requested = int(marker.group(1)) if marker.group(1) else DEFAULT_MAX
     limit = min(max(requested, 1), HARD_CAP)
-    count = load_count(path)
+    bdata = load_json(bpath)
+    count = max(0, int(bdata.get("continuations", 0)))
 
     if count >= limit:
-        clear_state(path)
+        clear(bpath)
+        clear(vpath)
         emit({})
         return 0
 
     count += 1
-    save_count(path, count, limit)
+    save_json(bpath, {"continuations": count, "limit": limit, "updated_at": int(time.time())})
+    reset_pass(vpath, vdata)
 
     if count == limit:
         reason = (
-            f"Final bounded-autonomy continuation {count}/{limit}. Continue the same task from "
-            "the current repository state. Make the highest-value remaining progress using an "
-            "independently verifiable step, run fresh relevant verification, and do not weaken "
-            "verification to manufacture success. Do not emit another high-agency continuation "
-            "marker. Finish by reporting what is verified, what remains incomplete, or what is blocked."
+            f"Final bounded-autonomy continuation {count}/{limit}. Continue the same task from the "
+            "current repository state. Make the highest-value remaining progress using an independently "
+            "verifiable step. Verify the touched or affected scope first and broaden only if risk requires "
+            "it. Do not weaken verification and do not emit another high-agency continuation marker. "
+            "Finish by reporting what is verified, what remains incomplete, or what is blocked."
         )
     else:
         reason = (
-            f"Bounded-autonomy continuation {count}/{limit}. Continue the same task from the "
-            "current repository state. Work on the highest-value unresolved acceptance criterion "
-            "using an independently verifiable step. Use fresh evidence, do not repeat an unchanged "
-            "failed approach, and do not weaken verification. Request another continuation only if "
-            "this pass produces meaningful new progress and more actionable work remains. If so, "
-            f"end with exactly <!-- high-agency:continue max={limit} -->. If complete, blocked, or "
-            "no meaningful new progress was made, finish without a marker and report the evidence."
+            f"Bounded-autonomy continuation {count}/{limit}. Continue the same task from the current "
+            "repository state. Work on the highest-value unresolved acceptance criterion using an "
+            "independently verifiable step. Verify the touched or affected scope first; broaden only for "
+            "dependency or integration risk. Request another continuation only if this pass produces "
+            "meaningful new progress and more actionable work remains. If so, end with exactly "
+            f"<!-- high-agency:continue max={limit} -->. Otherwise finish without a marker."
         )
 
     emit({"decision": "block", "reason": reason})
