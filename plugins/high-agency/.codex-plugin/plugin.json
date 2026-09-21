@@ -1,7 +1,7 @@
 {
   "name":"high-agency",
-  "version":"0.6.0",
-  "description":"Lightweight high-agency coding with Git-baseline verification, conditional diff review, and bounded autonomous iteration for Codex.",
+  "version":"0.7.0",
+  "description":"Lightweight high-agency coding with adaptive model routing, targeted verification, and bounded autonomous iteration for Codex.",
   "skills":"./skills/",
   "hooks":"./hooks/hooks.json"
 }
