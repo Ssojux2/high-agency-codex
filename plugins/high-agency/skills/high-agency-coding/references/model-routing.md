@@ -84,3 +84,17 @@ Bad parallel work:
 - four agents answering the same question.
 
 Return only findings, decisions, file references, commands, and evidence needed by the integrator.
+
+## Explicit fallback chains
+
+Do not block the task because a preferred delegated model is unavailable. Preserve the subtask and fall back deterministically:
+
+- **mechanical / test reporting:** `gpt-5.6-luna` → `gpt-5.6-terra` low/medium → current main model
+- **broad mapping / triage:** `gpt-5.6-terra` → `gpt-5.6-sol` medium → current main model
+- **normal delegated implementation:** `gpt-5.6-sol` → current main model
+- **hard architecture / root cause / security:** `gpt-6-astra` high/xhigh → `gpt-5.6-sol` high/xhigh → current main model
+- **exceptional max-depth reasoning:** `gpt-6-astra` max → Astra xhigh/high → Sol xhigh/high → current main model
+
+If multi-agent tools are disabled, skip the chain entirely and continue single-agent with the current model.
+
+Do not silently substitute a weaker model while claiming the stronger model ran. Report the fallback only when it materially affects confidence or cost.
