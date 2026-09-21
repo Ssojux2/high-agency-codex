@@ -1,8 +1,8 @@
 {
   "$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name":"high-agency",
-  "version":"0.5.0",
-  "description":"Lightweight high-agency coding with targeted verification, conditional diff review, and bounded autonomous iteration for Codex.",
+  "version":"0.6.0",
+  "description":"Lightweight high-agency coding with Git-baseline verification, conditional diff review, and bounded autonomous iteration for Codex.",
   "license":"MIT",
-  "keywords":["coding","autonomy","verification","targeted-testing","conditional-review","debugging","iteration"]
+  "keywords":["coding","autonomy","verification","git-baseline","targeted-testing","conditional-review","debugging","iteration"]
 }
