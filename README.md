@@ -1,8 +1,8 @@
 # High Agency for Codex
 
-A lightweight coding scaffold that keeps the useful parts of strict workflows—clear completion criteria, evidence, iteration, and review—without making planning, TDD, subagents, full-suite tests, or review stages mandatory.
+High Agency is a lightweight coding scaffold designed to use the LLM's own capability first, then spend extra process, stronger models, or deeper reasoning only where they materially improve correctness.
 
-Current version: **0.6.0**
+Current version: **0.7.0**
 
 ## Install
 
@@ -12,12 +12,53 @@ codex plugin marketplace add Ssojux2/high-agency-codex
 
 Then open `/plugins`, install **high-agency**, and review/trust the bundled hooks.
 
-## Skills
+## Core behavior
 
-- `$high-agency-coding` — define done → implement → verify touched/affected scope → conditionally review diff → finish.
-- `$bounded-autonomy` — progress-gated iteration with a small dynamic pass budget.
+`$high-agency-coding` defaults to **single-agent execution with the current model**.
 
-## Lightweight verification
+It keeps only five invariants:
+
+- observable outcome;
+- independently verifiable progress;
+- fresh evidence after relevant edits;
+- scope discipline;
+- conditional escalation.
+
+It does **not** require planning documents, TDD, worktrees, subagents, broad test suites, or review stages for every task.
+
+## Adaptive model routing
+
+Multi-model work is optional and only activates when delegation has real leverage: independent workstreams, large read-only exploration, high-impact architecture/security, repeated hard failures, or cheap bounded mechanical work.
+
+When native Codex multi-agent tools are available, High Agency asks for an explicit model and reasoning effort per delegated subtask:
+
+| Work | Preferred route |
+|---|---|
+| mechanical search / simple command execution / test reporting | **GPT-5.6 Luna**, low–medium |
+| large repo mapping / dependency tracing / docs lookup / first-pass triage | **GPT-5.6 Terra**, medium |
+| normal delegated implementation / integration / focused debugging | **GPT-5.6 Sol**, medium–high |
+| difficult architecture / cross-system reasoning / high-impact security / hard root cause | **GPT-6 Astra**, high–xhigh |
+| exceptional unresolved reasoning | **GPT-6 Astra**, max, rarely |
+
+The main thread remains the integrator.
+
+**Important:** the skill does not silently change the primary session's `/model`. It uses the current main model directly when that is efficient and routes only bounded subproblems to other models. If native subagents or a requested model are unavailable, it stays single-agent or uses the nearest available tier.
+
+The detailed routing table lives in `skills/high-agency-coding/references/model-routing.md` and is loaded only when delegation is justified.
+
+## Reasoning policy
+
+Reasoning effort is treated as a budget:
+
+- low — deterministic/mechanical;
+- medium — normal bounded reasoning;
+- high — complex implementation/debugging/review;
+- xhigh — ambiguous or high-impact reasoning;
+- max — rare final escalation.
+
+High Agency prefers increasing effort or model quality at a cognitive bottleneck before adding blind loop iterations.
+
+## Verification
 
 Verification expands only when risk expands:
 
@@ -27,88 +68,70 @@ local change → targeted check
              → full check only for broad/release-critical risk
 ```
 
-Still-valid verification is reused until a relevant later edit invalidates it. Independent read-only checks may run in parallel when both are already necessary.
+Still-valid evidence is reused until a relevant later edit invalidates it. Independent read-only checks may run in parallel when both are already necessary.
 
 ## Git baseline tracking
 
-v0.6 closes the main v0.5 tracking gap: edits made through shell commands, generators, formatters, or scripts can now invalidate verification even when they bypass native Edit/Write tools.
+Hooks detect edits made through native edit tools **and** shell commands, generators, formatters, or scripts:
 
-When High Agency is explicitly invoked:
+1. High Agency activation records a lightweight Git baseline.
+2. A verification command stores a verification snapshot.
+3. Stop compares the current tree against those snapshots.
+4. A relevant later edit invalidates stale verification.
 
-1. `UserPromptSubmit` records a lightweight Git baseline against the current HEAD.
-2. A recognized verification command stores a verification snapshot.
-3. At `Stop`, High Agency compares the current working tree to those snapshots.
-4. If relevant files changed after verification, it asks for the narrowest targeted/affected check again.
+The hook does not run project tests automatically.
 
-The snapshot stores fingerprints only for files already changed relative to the turn's baseline HEAD, capped at 512 paths. It does not copy the repository or run a diff after every shell command.
+## Conditional review
 
-For non-Git/unborn repositories the hook falls back to native Edit/Write tracking.
+Focused final diff review triggers only for risk signals such as:
 
-## Conditional final diff review
+- 3+ code/config files;
+- cross-module/package changes;
+- schema/migrations, dependencies/lockfiles, build/deploy config, auth/security/permissions;
+- a large diff.
 
-A final diff review is **not** required for every small fix. The Stop hook asks for a focused final diff only when one or more risk signals are present:
-
-- 3+ code/config files changed;
-- changes cross module/package boundaries;
-- schema/migration, dependency/lockfile, build/deploy config, auth/security/permissions changed;
-- final diff is large (currently 120+ changed lines when Git can measure it).
-
-The hook compares the final Git state to the turn-start baseline, so shell/generator changes participate in the same risk gate.
+Small local fixes normally skip an extra review stage.
 
 ## Bounded autonomy
 
-Use the smallest useful budget:
+`$bounded-autonomy` is progress-gated:
 
 - local/narrow fix: `max=1`;
 - normal multi-step work: `max=3`;
-- more than 3 only when clearly justified or explicitly requested;
+- more only when justified or explicitly requested;
 - hard cap: 12.
 
-The loop continues only after meaningful progress. The final allowed pass cannot request another pass.
+A repeated cognitive failure should trigger model/reasoning escalation before more passes.
 
-## Why lighter than Superpowers and Ralph
+## Why this stays lightweight
 
-| Concern | Superpowers / Ralph | High Agency |
-|---|---|---|
-| Planning | Superpowers uses formal design/plan stages | minimal outcome contract; plan only on uncertainty |
-| TDD | mandatory in Superpowers | optional; tests chosen by information value |
-| Worktree/subagents | often structured into workflow | only when isolation/parallelism materially helps |
-| Review | task/branch reviews can be mandatory | focused final diff only on risk signals |
-| Test scope | strong verification, often workflow-wide | touched → affected → full only on escalation |
-| Iteration | Ralph repeats until promise/max | progress-gated, usually 1 or 3 extra passes |
-| Repeated checks | workflow stages may repeat checks | reuse evidence until relevant inputs change |
+High Agency follows a **single-agent first** rule.
 
-## Benchmark
+A one-file fix should look like:
 
-A reproducible structural benchmark is in [`benchmarks/2026-09-22-structural.md`](benchmarks/2026-09-22-structural.md).
-
-The v0.6 change is hook-only, so the model-facing workflow instruction footprint is unchanged from v0.5:
-
-| Workflow | Model-facing workflow words |
-|---|---:|
-| High Agency normal | **1,163** |
-| High Agency bounded | **1,634** |
-| Superpowers bug-fix path | 3,987 |
-| Superpowers feature path | 5,160 |
-| Ralph command scaffold | 129 |
-
-These are process-footprint measurements, not task-success claims. End-to-end quality results should only be published after equal-model/equal-budget agent runs.
-
-## Hooks
-
-Hooks are active only when the user explicitly invokes High Agency. They do **not** automatically execute project tests or launch review agents.
-
-## Tests and evals
-
-`tests/test_git_state.py` covers shell edits, pre-existing dirty files, untracked generator output, and verification snapshot invalidation.
-
-`evals/` contains the task-quality rubric and four-way comparison tooling.
-
-```bash
-python3 -m unittest tests/test_git_state.py
-python3 evals/score.py results.json > scored.json
-python3 evals/compare.py scored.json
+```text
+current model → edit → targeted verification → finish
 ```
+
+A hard multi-system problem may look like:
+
+```text
+Terra map ─┐
+           ├→ main integrator / Sol implementation
+Astra plan ┘
+                    ↓
+              Luna test run
+                    ↓
+        conditional focused review
+```
+
+The second shape appears only when its expected benefit exceeds handoff cost.
+
+## Benchmarks and evals
+
+`benchmarks/` contains structural process-footprint measurements. `evals/` contains task-quality and four-way comparison tooling for no-skill, High Agency, Superpowers, and Ralph.
+
+End-to-end success claims are intentionally not published without equal-model/equal-budget runs.
 
 ## License
 
