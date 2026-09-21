@@ -1,4 +1,4 @@
-# Structural Benchmark — 2026-09-22
+# Structural Benchmark — 2026-09-22\n\n> v0.6 note: the v0.6 changes are hook/runtime-only. The model-facing skill text is unchanged from v0.5, so the instruction-footprint counts below remain valid.
 
 This benchmark measures **workflow instruction footprint and default control-flow overhead**, not end-to-end coding quality.
 
