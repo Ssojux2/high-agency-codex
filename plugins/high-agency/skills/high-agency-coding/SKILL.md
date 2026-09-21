@@ -1,6 +1,6 @@
 ---
 name: high-agency-coding
-description: Use when implementing, modifying, debugging, refactoring, or reviewing code where autonomous execution and fresh verification are useful; favors direct progress over process-heavy planning.
+description: Use when implementing, modifying, debugging, refactoring, or reviewing code where autonomous execution and fresh verification are useful; favors direct progress and targeted verification over process-heavy planning.
 ---
 
 # High Agency Coding
@@ -12,9 +12,10 @@ Make the most correct progress with the least ceremony.
 1. **Understand** — determine the real goal, relevant constraints, and the evidence that would prove success.
 2. **Define done** — keep a minimal outcome contract: goal, proof, and boundaries.
 3. **Act** — take one coherent step that materially advances an acceptance criterion and can be independently verified.
-4. **Verify** — obtain fresh evidence for the actual requested behavior.
-5. **Repair** — if verification fails, use the new evidence to change the approach, then verify again.
-6. **Finish** — stop when the requested outcome is verified and the diff stays within scope.
+4. **Verify narrowly** — test the changed or affected scope first.
+5. **Escalate only when justified** — broaden verification when dependency or integration risk requires it.
+6. **Repair** — if verification fails, use the new evidence to change the approach, then verify again.
+7. **Finish** — stop when the requested outcome is verified and the diff stays within scope.
 
 ## Outcome contract
 
@@ -49,6 +50,31 @@ Do not create planning documents, worktrees, subagents, commits, or extra review
 - For debugging, identify the likely root cause before making speculative patches.
 - If the same underlying failure occurs twice, do not repeat the same approach. Reassess assumptions, inspect different evidence, or reduce the problem.
 
+## Verification budget
+
+Default to the smallest verification scope that can actually falsify the change.
+
+Use this order:
+
+1. **Touched scope** — the nearest relevant test, module, package, typecheck, lint, or runtime probe for the files changed.
+2. **Affected scope** — dependents or related tests when the change can propagate beyond the touched module.
+3. **Broad scope** — full package/workspace suite only when risk signals justify it.
+
+Prefer repository-native selective testing when it already exists. Examples include Jest `--findRelatedTests`, Vitest `related --run` or `--changed`, Nx `affected -t test`, or the repository's existing affected/filter mechanism.
+
+Do not add a dependency solely to optimize verification.
+
+Escalate beyond targeted verification when one or more are true:
+
+- a shared/public API, common library, schema, migration, lockfile, build config, or test config changed;
+- the dependency impact is unclear;
+- targeted checks expose integration failures;
+- the requested behavior crosses a real interface boundary and targeted tests cannot exercise it;
+- the user explicitly requests a broad/full check;
+- the work is release-, deployment-, or CI-critical.
+
+Do not run a full suite by reflex when targeted or affected checks give sufficient evidence.
+
 ## Baseline awareness
 
 When a failing check may predate your change and the distinction matters, establish or inspect the relevant baseline.
@@ -60,19 +86,12 @@ Do not chase unrelated pre-existing failures unless they block verification of t
 Before any completion claim:
 
 1. Identify what evidence would prove the claim.
-2. Run the relevant check now.
+2. Run the narrowest relevant check now.
 3. Read the result, including failures and exit status when available.
-4. Compare the result to the user's actual acceptance criteria.
-5. Inspect the resulting diff or state for scope drift when meaningful.
-6. Only then claim completion.
-
-Choose checks proportionally:
-
-- targeted tests for a local change
-- typecheck/build for compilation or integration risk
-- lint when style/static rules are relevant
-- runtime or end-to-end behavior when the task depends on real interaction
-- diff inspection after meaningful code edits
+4. Escalate scope only if the risk signals above require it.
+5. Compare the result to the user's actual acceptance criteria.
+6. Inspect the resulting diff or state for scope drift when meaningful.
+7. Only then claim completion.
 
 Verification proves the user-visible requirement, not merely a green command.
 
@@ -108,4 +127,4 @@ Stop and report the actual state when:
 - the next action would be destructive or outside the requested scope;
 - repeated failures provide no new evidence.
 
-Report only what matters: what changed, fresh verification performed, and any unresolved risk.
+Report only what matters: what changed, targeted verification performed, any broader verification that was justified, and unresolved risk.
