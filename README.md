@@ -67,6 +67,27 @@ The loop continues only after meaningful progress. The final allowed pass cannot
 
 The goal is not to win by doing less. It is to spend process only where it changes the probability of a correct result.
 
+## Benchmark
+
+A reproducible structural benchmark is in [`benchmarks/2026-09-22-structural.md`](benchmarks/2026-09-22-structural.md).
+
+Measured workflow-instruction footprint:
+
+| Workflow | Model-facing workflow words |
+|---|---:|
+| High Agency normal | **1,163** |
+| High Agency bounded | **1,634** |
+| Superpowers bug-fix path | 3,987 |
+| Superpowers feature path | 5,160 |
+| Ralph command scaffold | 129 |
+
+On this structural measure, High Agency normal is **70.8% smaller than the measured Superpowers bug-fix path** and **77.5% smaller than the measured feature path**. High Agency bounded remains **59.0% / 68.3% smaller**, respectively.
+
+Ralph's command scaffold is smaller than High Agency, but its official loop repeats the same prompt and defaults to unlimited iterations unless the user sets a max or completion promise. High Agency instead spends a larger fixed instruction budget on targeted verification, progress gating, and conditional review.
+
+These are **word-count/process-overhead measurements, not token-cost or task-success claims**. End-to-end quality results will only be published after running the same tasks with the same model, effort, permissions, and budget.
+
+
 ## Hooks
 
 The hooks are active only when the user explicitly invokes High Agency in the prompt. They track edits, verification commands, and focused diff inspection.
