@@ -54,6 +54,12 @@ def save_count(path: Path, count: int, limit: int) -> None:
     )
     tmp.replace(path)
 
+def clear_state(path: Path) -> None:
+    try:
+        path.unlink(missing_ok=True)
+    except OSError:
+        pass
+
 def main() -> int:
     try:
         payload = json.load(sys.stdin)
@@ -74,10 +80,7 @@ def main() -> int:
 
     match = MARKER_RE.search(message)
     if not match:
-        try:
-            path.unlink(missing_ok=True)
-        except OSError:
-            pass
+        clear_state(path)
         emit({})
         return 0
 
@@ -86,24 +89,32 @@ def main() -> int:
     count = load_count(path)
 
     if count >= limit:
-        try:
-            path.unlink(missing_ok=True)
-        except OSError:
-            pass
+        clear_state(path)
         emit({})
         return 0
 
     count += 1
     save_count(path, count, limit)
 
-    reason = (
-        f"Bounded-autonomy continuation {count}/{limit}. Continue the same task from the "
-        "current repository state. Work on the highest-value unresolved acceptance criterion. "
-        "Use fresh evidence, do not repeat an unchanged failed approach, and run relevant "
-        "verification before stopping. If more actionable work remains, end with exactly "
-        f"<!-- high-agency:continue max={limit} -->. If complete or blocked, finish without "
-        "a continuation marker and report the evidence or blocker."
-    )
+    if count == limit:
+        reason = (
+            f"Final bounded-autonomy continuation {count}/{limit}. Continue the same task from "
+            "the current repository state. Make the highest-value remaining progress using an "
+            "independently verifiable step, run fresh relevant verification, and do not weaken "
+            "verification to manufacture success. Do not emit another high-agency continuation "
+            "marker. Finish by reporting what is verified, what remains incomplete, or what is blocked."
+        )
+    else:
+        reason = (
+            f"Bounded-autonomy continuation {count}/{limit}. Continue the same task from the "
+            "current repository state. Work on the highest-value unresolved acceptance criterion "
+            "using an independently verifiable step. Use fresh evidence, do not repeat an unchanged "
+            "failed approach, and do not weaken verification. Request another continuation only if "
+            "this pass produces meaningful new progress and more actionable work remains. If so, "
+            f"end with exactly <!-- high-agency:continue max={limit} -->. If complete, blocked, or "
+            "no meaningful new progress was made, finish without a marker and report the evidence."
+        )
+
     emit({"decision": "block", "reason": reason})
     return 0
 
