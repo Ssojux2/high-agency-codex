@@ -43,7 +43,7 @@ Flag these conditions:
 - **WARN** `allow_managed_hooks_only = true`: bundled High Agency hooks may be skipped unless deployed as managed hooks.
 - **INFO** low concurrency: parallel delegation may be limited, but correctness should not depend on parallelism.
 - **INFO** default subagent model/effort: explicit High Agency spawn settings take precedence when the runtime supports them.
-- **UNVERIFIED** model availability: static config cannot prove that Astra/Sol/Terra/Luna are actually available to the current account/provider.
+- **UNVERIFIED** model availability: static config cannot prove that Astra/Sol/Terra/Luna are actually available to the current account/provider.\n- **UNVERIFIED** bundled hook trust: Codex requires plugin hooks to be reviewed/trusted; static config alone may not prove the current hook trust state. Ask the user to inspect `/hooks` when hook behavior is unexpectedly absent.
 
 Do not treat an absent optional setting as an error.
 
