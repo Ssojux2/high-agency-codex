@@ -2,7 +2,7 @@
 
 A lightweight coding scaffold that keeps the useful parts of strict workflows—clear completion criteria, evidence, iteration, and review—without making planning, TDD, subagents, full-suite tests, or review stages mandatory.
 
-Current version: **0.5.0**
+Current version: **0.6.0**
 
 ## Install
 
@@ -29,6 +29,21 @@ local change → targeted check
 
 Still-valid verification is reused until a relevant later edit invalidates it. Independent read-only checks may run in parallel when both are already necessary.
 
+## Git baseline tracking
+
+v0.6 closes the main v0.5 tracking gap: edits made through shell commands, generators, formatters, or scripts can now invalidate verification even when they bypass native Edit/Write tools.
+
+When High Agency is explicitly invoked:
+
+1. `UserPromptSubmit` records a lightweight Git baseline against the current HEAD.
+2. A recognized verification command stores a verification snapshot.
+3. At `Stop`, High Agency compares the current working tree to those snapshots.
+4. If relevant files changed after verification, it asks for the narrowest targeted/affected check again.
+
+The snapshot stores fingerprints only for files already changed relative to the turn's baseline HEAD, capped at 512 paths. It does not copy the repository or run a diff after every shell command.
+
+For non-Git/unborn repositories the hook falls back to native Edit/Write tracking.
+
 ## Conditional final diff review
 
 A final diff review is **not** required for every small fix. The Stop hook asks for a focused final diff only when one or more risk signals are present:
@@ -38,9 +53,7 @@ A final diff review is **not** required for every small fix. The Stop hook asks 
 - schema/migration, dependency/lockfile, build/deploy config, auth/security/permissions changed;
 - final diff is large (currently 120+ changed lines when Git can measure it).
 
-The hook uses files touched during the High Agency turn and asks for a focused `git diff`, not a reviewer subagent or whole-branch review.
-
-If an edit occurs after verification or diff review, the relevant evidence is invalidated and must be refreshed.
+The hook compares the final Git state to the turn-start baseline, so shell/generator changes participate in the same risk gate.
 
 ## Bounded autonomy
 
@@ -65,13 +78,11 @@ The loop continues only after meaningful progress. The final allowed pass cannot
 | Iteration | Ralph repeats until promise/max | progress-gated, usually 1 or 3 extra passes |
 | Repeated checks | workflow stages may repeat checks | reuse evidence until relevant inputs change |
 
-The goal is not to win by doing less. It is to spend process only where it changes the probability of a correct result.
-
 ## Benchmark
 
 A reproducible structural benchmark is in [`benchmarks/2026-09-22-structural.md`](benchmarks/2026-09-22-structural.md).
 
-Measured workflow-instruction footprint:
+The v0.6 change is hook-only, so the model-facing workflow instruction footprint is unchanged from v0.5:
 
 | Workflow | Model-facing workflow words |
 |---|---:|
@@ -81,29 +92,23 @@ Measured workflow-instruction footprint:
 | Superpowers feature path | 5,160 |
 | Ralph command scaffold | 129 |
 
-On this structural measure, High Agency normal is **70.8% smaller than the measured Superpowers bug-fix path** and **77.5% smaller than the measured feature path**. High Agency bounded remains **59.0% / 68.3% smaller**, respectively.
-
-Ralph's command scaffold is smaller than High Agency, but its official loop repeats the same prompt and defaults to unlimited iterations unless the user sets a max or completion promise. High Agency instead spends a larger fixed instruction budget on targeted verification, progress gating, and conditional review.
-
-These are **word-count/process-overhead measurements, not token-cost or task-success claims**. End-to-end quality results will only be published after running the same tasks with the same model, effort, permissions, and budget.
-
+These are process-footprint measurements, not task-success claims. End-to-end quality results should only be published after equal-model/equal-budget agent runs.
 
 ## Hooks
 
-The hooks are active only when the user explicitly invokes High Agency in the prompt. They track edits, verification commands, and focused diff inspection.
+Hooks are active only when the user explicitly invokes High Agency. They do **not** automatically execute project tests or launch review agents.
 
-They do **not** automatically execute project tests or launch review agents.
+## Tests and evals
 
-## Evals
+`tests/test_git_state.py` covers shell edits, pre-existing dirty files, untracked generator output, and verification snapshot invalidation.
 
-`evals/` contains a rubric, scenario set, scorer, and four-way comparison plan.
+`evals/` contains the task-quality rubric and four-way comparison tooling.
 
 ```bash
+python3 -m unittest tests/test_git_state.py
 python3 evals/score.py results.json > scored.json
 python3 evals/compare.py scored.json
 ```
-
-Compare the same task/repository/model/effort across `no-skill`, `high-agency`, `superpowers`, and `ralph`.
 
 ## License
 
