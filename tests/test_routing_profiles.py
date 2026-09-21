@@ -32,6 +32,16 @@ class RoutingPolicyTests(unittest.TestCase):
         text = ROUTING.read_text(encoding="utf-8")
         self.assertIn("Do **not** launch nested `codex exec`", text)
 
+    def test_delegation_is_shallow_and_bounded(self):
+        text = ROUTING.read_text(encoding="utf-8")
+        self.assertIn("at most 2 concurrent delegated agents", text)
+        self.assertIn("Child agents should not recursively spawn", text)
+
+    def test_handoff_packet_is_compact(self):
+        text = ROUTING.read_text(encoding="utf-8")
+        for field in ("Goal", "Relevant evidence", "Constraints", "Expected return", "Stop condition"):
+            self.assertIn(field, text)
+
 
 if __name__ == "__main__":
     unittest.main()
