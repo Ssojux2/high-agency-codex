@@ -1,0 +1,20 @@
+{
+  "name": "high-agency",
+  "interface": {
+    "displayName": "High Agency"
+  },
+  "plugins": [
+    {
+      "name": "high-agency",
+      "source": {
+        "source": "local",
+        "path": "./plugins/high-agency"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
