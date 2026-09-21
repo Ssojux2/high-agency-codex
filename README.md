@@ -154,6 +154,24 @@ The second shape appears only when its expected benefit exceeds handoff cost.
 
 End-to-end success claims are intentionally not published without equal-model/equal-budget runs.
 
+## Development status
+
+**v0.8.0 is the current feature-freeze baseline.**
+
+Further runtime features, routing rules, thresholds, or orchestration complexity will not be added based on intuition alone. The next behavioral changes should be driven by real end-to-end Codex/Claude Code runs using the existing `evals/` scenarios and comparable model/budget settings.
+
+Before changing the runtime, collect evidence such as:
+
+- task success and false-completion rate;
+- tokens/tool calls/wall time;
+- unnecessary delegation or duplicate work;
+- targeted vs affected vs full verification frequency;
+- no-progress continuation passes;
+- routing/fallback failures;
+- hook latency or false-positive guards.
+
+Exceptions to the freeze are limited to clear compatibility, security, or correctness bugs.
+
 ## License
 
 MIT
