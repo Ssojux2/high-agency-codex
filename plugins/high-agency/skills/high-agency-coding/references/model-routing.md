@@ -118,7 +118,7 @@ A delegated task should normally contain only:
 
 1. **Goal** — one bounded question or deliverable.
 2. **Relevant evidence** — exact files, symbols, errors, or observations already known.
-3. **Constraints** — what not to change and any permissions/risk boundary.
+3. **Constraints** — what not to change and any permissions/risk boundary. Include **do not delegate further** unless the root explicitly wants another independent branch.
 4. **Expected return** — findings, bounded patch, command result, or decision.
 5. **Stop condition** — when the subagent should return instead of broadening scope.
 
