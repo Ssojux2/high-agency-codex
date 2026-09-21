@@ -1,0 +1,8 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "high-agency",
+  "version": "0.2.0",
+  "description": "Lightweight high-agency coding and bounded autonomous iteration for Codex.",
+  "license": "MIT",
+  "keywords": ["coding","autonomy","verification","debugging","iteration"]
+}
