@@ -148,6 +148,216 @@ Astra plan ┘
 
 The second shape appears only when its expected benefit exceeds handoff cost.
 
+## High Agency vs Superpowers vs Ralph Loop
+
+The three approaches optimize for different things:
+
+- **Superpowers** — maximize consistency by enforcing a development process.
+- **Ralph Loop** — maximize persistence by repeating until a completion condition is reached.
+- **High Agency** — maximize model capability per unit of process by staying single-agent first and adding planning, stronger models, broader verification, review, or continuation only when evidence/risk justifies it.
+
+### Summary
+
+| Dimension | High Agency | Superpowers | Ralph Loop |
+|---|---|---|---|
+| Core philosophy | model judgment + conditional guardrails | process discipline | persistent iteration |
+| Default process overhead | low | high | very low |
+| Planning | only when uncertainty warrants it | formal brainstorming/spec/plan workflow | no built-in planning discipline |
+| TDD | optional | central/mandatory in feature/bug-fix paths | not built in |
+| Subagents | only when delegation has leverage | actively used by workflow | not core |
+| Model/effort routing | adaptive | not the main design goal | not built in |
+| Verification | touched → affected → broad on risk | strong verification/TDD discipline | depends on the prompt/agent |
+| Review | focused and conditional | review stages can be part of the normal workflow | not built in |
+| Iteration | progress-gated, usually 1–3 extra passes | workflow-dependent | core mechanism |
+| Reuse of valid evidence | yes | not a central default rule | no verification model built in |
+| False-completion defense | fresh evidence + Stop guard | strong | completion promise / loop condition |
+| Token/process efficiency | explicit design goal | secondary to process consistency | highly dependent on iteration count |
+
+### Where High Agency is stronger than Superpowers
+
+High Agency deliberately avoids forcing the full development ceremony onto every task.
+
+A small local fix can remain:
+
+```text
+current model
+→ inspect
+→ edit
+→ targeted verification
+→ finish
+```
+
+There is no mandatory brainstorming, plan document, worktree, TDD cycle, reviewer, or broad test suite unless the task actually benefits from it.
+
+This gives High Agency three main advantages:
+
+1. **Lower process overhead on routine work**  
+   Strong models can act directly instead of spending tokens proving that a simple task deserves a simple solution.
+
+2. **Adaptive compute allocation**  
+   Cheap/read-heavy/mechanical work can be delegated to lower-cost models, while difficult architecture, security, or root-cause reasoning can escalate to stronger models and higher reasoning effort.
+
+3. **Risk-based verification instead of workflow-wide verification**  
+   Verification starts at the changed surface and expands only when propagation risk exists.
+
+The trade-off is that High Agency trusts model judgment more. If the model underestimates task complexity, chooses the wrong verification scope, or fails to escalate when it should, Superpowers' stronger procedural constraints may be more robust.
+
+### Where Superpowers is stronger
+
+Superpowers is intentionally more prescriptive.
+
+That can be valuable when:
+
+- a weaker or less reliable model needs process discipline;
+- the project benefits from explicit design approval before implementation;
+- a team wants TDD and review to be mandatory rather than discretionary;
+- reducing behavioral variance matters more than minimizing token/process overhead.
+
+In short:
+
+```text
+Superpowers
+= lower behavioral variance
+  + stronger process guarantees
+  - higher ceremony and context cost
+```
+
+### Where High Agency is stronger than Ralph Loop
+
+Ralph's key strength is persistence:
+
+```text
+not complete
+→ run again
+→ run again
+→ run again
+```
+
+High Agency keeps that useful idea but adds a progress gate.
+
+Another pass is justified only when the previous pass produced something such as:
+
+- a meaningful repository-state change;
+- new verification evidence;
+- a newly identified or disproven root cause;
+- material progress on an acceptance criterion.
+
+So the default rule is closer to:
+
+```text
+not complete
++ meaningful progress
++ actionable next step
+→ continue
+```
+
+rather than simply:
+
+```text
+not complete
+→ continue
+```
+
+High Agency also prefers **reasoning/model escalation before blind iteration** when the same cognitive failure survives multiple evidence-based attempts.
+
+### Where Ralph Loop is stronger
+
+Ralph is much simpler and can be very effective when persistence itself is the main requirement.
+
+It can be a good fit for:
+
+- long-running migrations;
+- large repetitive refactors;
+- many failing tests that can be fixed incrementally;
+- tasks with a very clear completion condition and cheap iterations.
+
+Its simplicity is also its weakness: it does not define which tests to run, when evidence is stale, whether the approach is repeating itself, or when a stronger model would be more effective than another iteration.
+
+### High Agency's design position
+
+High Agency is not intended to be a compromise halfway between Superpowers and Ralph.
+
+It selectively borrows the useful parts of both:
+
+From Superpowers:
+- verification discipline;
+- root-cause discipline;
+- planning when uncertainty is real.
+
+From Ralph:
+- continuation;
+- persistence.
+
+And adds:
+- adaptive model and reasoning routing;
+- single-agent-first execution;
+- targeted → affected → broad verification;
+- evidence reuse;
+- Git-state invalidation;
+- conditional diff review;
+- bounded, progress-gated continuation.
+
+The intended runtime shape is:
+
+```text
+                     main model
+                         │
+              simple task? ── yes ──→ direct implementation
+                         │
+                         no
+                         ↓
+                 adaptive escalation
+            ┌────────────┼────────────┐
+            │            │            │
+       cheap/broad    workhorse    frontier
+            │            │            │
+       lower-cost       normal      strongest
+         model          model       reasoning
+            └────────────┼────────────┘
+                         ↓
+                 main integration
+                         ↓
+              targeted verification
+                         ↓
+                 risk propagation?
+                  │             │
+                 no            yes
+                  │             ↓
+                  │       affected/broad check
+                  │             ↓
+                  │       conditional review
+                  └─────────────┘
+                         ↓
+                       done
+```
+
+### Current trade-off
+
+High Agency's biggest advantage is also its biggest risk: **it relies more on the model making good meta-decisions**.
+
+The important questions are not hard-coded into a fixed workflow:
+
+- Is this task complex enough to plan?
+- Is delegation worth its context/handoff cost?
+- Is targeted verification enough?
+- Should reasoning/model quality escalate?
+- Is another continuation likely to produce new evidence?
+
+That is why the current roadmap is evaluation-first. Structural overhead is already lower than the measured Superpowers paths, but no claim is made that High Agency has a higher task-success rate until equal-model/equal-budget end-to-end benchmarks are run.
+
+### Practical fit
+
+| Task type | Likely fit |
+|---|---|
+| routine coding / small bug fix | High Agency |
+| strong modern model with tight token/time budget | High Agency |
+| adaptive multi-model execution | High Agency |
+| mandatory TDD / formal development workflow | Superpowers |
+| strict design-before-code process | Superpowers |
+| very long autonomous repetitive work | Ralph Loop |
+| clear completion condition + cheap retries | Ralph Loop |
+| long-running work where iteration cost also matters | High Agency bounded autonomy |
+
 ## Benchmarks and evals
 
 `benchmarks/` contains structural process-footprint measurements. `evals/` contains task-quality and four-way comparison tooling for no-skill, High Agency, Superpowers, and Ralph.
