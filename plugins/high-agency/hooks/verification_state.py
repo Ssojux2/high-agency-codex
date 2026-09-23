@@ -9,6 +9,7 @@ import traceback
 from pathlib import Path
 
 from git_state import snapshot
+from impact_scope import first_impact_from_transcript
 
 VERIFY_RE = re.compile(
     r"(?:\bpytest\b|python\s+-m\s+pytest|\bjest\b|\bvitest\b|playwright\s+test|"
@@ -105,6 +106,8 @@ def main() -> int:
                 "verification_commands": [],
                 "verification_guard_warned": False,
                 "diff_guard_warned": False,
+                "impact_estimate": None,
+                "impact_drift_warned": False,
             },
         )
         return 0
@@ -115,6 +118,11 @@ def main() -> int:
     data = load(path)
     if not data.get("active"):
         return 0
+
+    if not data.get("impact_estimate"):
+        estimate = first_impact_from_transcript(payload.get("transcript_path"))
+        if estimate:
+            data["impact_estimate"] = estimate
 
     tool_name = str(payload.get("tool_name") or "")
     tool_input = payload.get("tool_input")
