@@ -12,6 +12,7 @@ import time
 from pathlib import Path
 
 from git_state import delta_files, snapshot, snapshots_equal
+from impact_scope import classify_drift, first_impact_from_transcript
 
 MARKER_RE = re.compile(
     r"<!--\s*high-agency:continue(?:\s+max=(\d+))?\s*-->\s*$",
@@ -159,18 +160,18 @@ def git_stats(cwd: Path, files: list[str], base_ref: str | None) -> tuple[int, s
         return 0, ""
 
 
-def diff_reasons(vdata: dict, current: dict, files: list[str], cwd: Path) -> tuple[list[str], list[str], str]:
+def diff_reasons(vdata: dict, current: dict, files: list[str], cwd: Path, estimate: dict | None = None) -> tuple[list[str], list[str], str]:
     relevant = code_files(files)
     reasons = []
     if current.get("truncated"):
         reasons.append("changed-file snapshot exceeded tracking limit")
-    if len(relevant) >= 3:
-        reasons.append(f"{len(relevant)} code/config files changed")
-
     relative = [rel(path, cwd) for path in relevant]
-    top_levels = {path.split("/")[0] if "/" in path else "." for path in relative}
-    if len(relevant) >= 2 and len(top_levels) >= 2:
-        reasons.append("change crosses module boundaries")
+    if not estimate:
+        if len(relevant) >= 3:
+            reasons.append(f"{len(relevant)} code/config files changed")
+        top_levels = {path.split("/")[0] if "/" in path else "." for path in relative}
+        if len(relevant) >= 2 and len(top_levels) >= 2:
+            reasons.append("change crosses module boundaries")
     if any(RISK_RE.search(path) for path in relative):
         reasons.append("high-impact/shared path changed")
 
@@ -179,6 +180,24 @@ def diff_reasons(vdata: dict, current: dict, files: list[str], cwd: Path) -> tup
     if lines >= LARGE_DIFF_LINES:
         reasons.append(f"large diff ({lines} changed lines)")
     return reasons, relevant, check
+
+
+def impact_drift(vdata: dict, payload: dict, current: dict, files: list[str], cwd: Path) -> tuple[dict | None, dict]:
+    estimate = vdata.get("impact_estimate")
+    if not estimate:
+        estimate = first_impact_from_transcript(payload.get("transcript_path"))
+        if estimate:
+            vdata["impact_estimate"] = estimate
+
+    relative = [rel(path, cwd) for path in files]
+    high_impact = any(RISK_RE.search(path) for path in relative)
+    drift = classify_drift(
+        estimate,
+        relative,
+        high_impact=high_impact,
+        truncated=bool(current.get("truncated")),
+    )
+    return estimate, drift
 
 
 def main() -> int:
@@ -247,6 +266,51 @@ def main() -> int:
         )
         return 0
 
+    estimate, drift = impact_drift(vdata, payload, current, relevant, cwd)
+    if (
+        vdata.get("active")
+        and estimate
+        and drift.get("severity") in {"minor", "major"}
+        and not vdata.get("impact_drift_warned")
+    ):
+        severity = drift["severity"]
+        vdata["impact_drift_warned"] = True
+        if severity == "major":
+            vdata["diff_guard_warned"] = True
+        save(vpath, vdata)
+        actual = f"{drift.get('file_count', 0)} files / {drift.get('module_count', 0)} modules"
+        reasons = "; ".join(drift.get("reasons") or [])
+        if severity == "major":
+            action = (
+                "Major scope drift. Inspect the focused final diff, compare the semantic boundary "
+                "against the initial estimate, and run affected or broader verification only for "
+                "the expanded risk surface. Escalate model/reasoning only if the newly discovered "
+                "scope creates a real cognitive bottleneck."
+            )
+        else:
+            action = (
+                "Minor scope drift. Extend verification to the newly affected surface and compare "
+                "the semantic boundary against the initial estimate. Do not jump to a full suite or "
+                "extra reviewer unless another risk signal justifies it."
+            )
+        emit(
+            {
+                "decision": "block",
+                "reason": (
+                    "High Agency impact calibration: initial `"
+                    + str(estimate.get("raw") or "")
+                    + "`; actual "
+                    + actual
+                    + ". "
+                    + reasons
+                    + ". "
+                    + action
+                    + " Keep the original estimate immutable; record drift rather than rewriting it."
+                ),
+            }
+        )
+        return 0
+
     diff_valid = (
         current.get("available")
         and snapshots_equal(vdata.get("diff_snapshot"), current)
@@ -257,7 +321,7 @@ def main() -> int:
         and not diff_valid
         and not vdata.get("diff_guard_warned")
     ):
-        reasons, diff_files, check = diff_reasons(vdata, current, changed, cwd)
+        reasons, diff_files, check = diff_reasons(vdata, current, changed, cwd, estimate=estimate)
         if reasons:
             vdata["diff_guard_warned"] = True
             save(vpath, vdata)
