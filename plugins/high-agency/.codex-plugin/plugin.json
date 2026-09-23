@@ -1,6 +1,6 @@
 {
   "name": "high-agency",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Lightweight high-agency coding with adaptive model routing, diagnostics, explicit fallbacks, targeted verification, and bounded autonomous iteration for Codex.",
   "skills": "./skills/",
   "hooks": "./hooks/hooks.json"
