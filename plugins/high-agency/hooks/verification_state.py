@@ -5,6 +5,7 @@ import json
 import os
 import re
 import sys
+import traceback
 from pathlib import Path
 
 from git_state import snapshot
@@ -149,4 +150,11 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except Exception:
+        # High Agency hooks are guardrails, not the user's task itself.
+        # Unexpected hook failures must not interrupt the Codex session.
+        if os.environ.get("HIGH_AGENCY_HOOK_DEBUG") == "1":
+            traceback.print_exc()
+        raise SystemExit(0)
