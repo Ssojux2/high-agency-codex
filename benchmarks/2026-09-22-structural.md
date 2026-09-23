@@ -2,35 +2,48 @@
 
 This benchmark measures model-facing workflow instruction footprint, not end-to-end coding quality.
 
-## v0.8 progressive disclosure
+## v0.9 impact calibration
 
-High Agency keeps the ordinary coding path small. Diagnostics and model-routing details are optional resources.
+High Agency v0.9 adds one model-facing invariant to the ordinary path: predict expected change scope before mutation, then compare the actual diff against that immutable estimate.
 
 | Codex path | Model-facing workflow words |
 |---|---:|
-| High Agency core | **648** |
-| Core + bounded autonomy | **900** |
-| Core + adaptive routing reference | **1,577** |
-| Bounded + adaptive routing reference | **1,829** |
-| Doctor skill, opt-in only | **462** |
+| High Agency core | **816** |
+| Core + bounded autonomy | **1,068** |
+| Core + adaptive routing reference | **1,758** |
+| Bounded + adaptive routing reference | **2,010** |
 | Superpowers measured bug-fix path | 3,987 |
 | Superpowers measured feature path | 5,160 |
 | Ralph command scaffold | 129 |
 
 Compared with the measured Superpowers paths:
 
-- core: **83.7% / 87.4% smaller**;
-- bounded: **77.4% / 82.6% smaller**;
-- core + routing: **60.4% / 69.4% smaller**;
-- bounded + routing: **54.1% / 64.6% smaller**.
+- core: **79.5% / 84.2% smaller**;
+- bounded: **73.2% / 79.3% smaller**;
+- core + routing: **55.9% / 65.9% smaller**;
+- bounded + routing: **49.6% / 61.0% smaller**.
 
-Doctor is not part of normal coding context. The fallback/fan-out/handoff rules live in the routing reference and are loaded only when delegation is justified.
+The v0.8 core was 648 words. v0.9 adds about 168 words for impact prediction/calibration while keeping routing, doctor, hooks, tests, and eval machinery progressively disclosed or outside model context.
 
-Ralph remains much smaller as a fixed scaffold; its trade-off is repeated iteration rather than richer verification/routing policy.
+## v0.9 control-flow intent
+
+| Behavior | High Agency |
+|---|---|
+| Default | current model, single agent |
+| Impact estimate | one immutable line before code/config mutation |
+| Scope comparison | predicted files/modules/boundary vs actual diff |
+| Match | keep targeted path |
+| Minor drift | affected verification only |
+| Major drift | focused diff + risk-scoped broader verification |
+| Stronger model | only if expanded scope creates cognitive leverage |
+| Fixed heuristics | fallback when estimate is absent; high-impact/large-diff safety net remains |
+| Delegation | only on leverage triggers |
+| Concurrent delegated agents | default cap 2 |
+| Iteration | progress-gated, usually max 1 or 3 |
 
 ## Method
 
-Whitespace-separated words from model-facing files. Hook code, Git snapshot code, tests, and benchmark/eval files are excluded because they do not enter the normal model context.
+Whitespace-separated words from model-facing workflow files. Hook source, Git snapshot logic, impact parser, tests, benchmark files, and eval files are excluded because they execute outside the normal model prompt.
 
 Superpowers comparison paths:
 - bug-fix: using-superpowers + systematic-debugging + test-driven-development + verification-before-completion;
@@ -38,24 +51,8 @@ Superpowers comparison paths:
 
 Ralph: official ralph-loop command scaffold only.
 
-These are word-count/process-footprint numbers, not tokenizer counts, success rates, or cost claims.
-
-## v0.8 control-flow intent
-
-| Behavior | High Agency |
-|---|---|
-| Default | current model, single agent |
-| Delegation | only on leverage triggers |
-| Concurrent delegated agents | default cap 2 |
-| Recursive delegation | discouraged; root owns orchestration |
-| Handoff | compact goal/evidence/constraints/return/stop packet |
-| Planning | short in-context unless uncertainty warrants more |
-| Testing | touched → affected → broad on risk |
-| Review | focused diff only on risk |
-| Iteration | progress-gated, usually max 1 or 3 |
-| Diagnostics | separate read-only doctor |
-| Fallback | explicit model chains, then current main model |
+These are process-footprint numbers, not tokenizer counts, success rates, or cost claims.
 
 ## End-to-end status
 
-No task-success or token-cost advantage is claimed until equal-model/equal-budget runs are performed. Use evals/ for those comparisons.
+No task-success or token-cost advantage is claimed until equal-model/equal-budget runs are performed. v0.9 evaluation should additionally measure impact underestimation, overestimation, drift severity, escalation precision, and escalation recall. See evals/impact-calibration.md.
