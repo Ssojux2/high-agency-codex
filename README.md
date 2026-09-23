@@ -2,7 +2,7 @@
 
 High Agency is a lightweight coding scaffold designed to use the LLM's own capability first, then spend extra process, stronger models, or deeper reasoning only where they materially improve correctness.
 
-Current version: **0.8.0**
+Current version: **0.8.1**
 
 ## Install
 
@@ -11,6 +11,8 @@ codex plugin marketplace add Ssojux2/high-agency-codex
 ```
 
 Then open `/plugins`, install **high-agency**, and review/trust the bundled hooks.
+
+> **v0.8.1 hook reliability:** Codex hooks now fail open by default. Unexpected hook-state or environment errors no longer interrupt the coding session; set `HIGH_AGENCY_HOOK_DEBUG=1` only when you intentionally want hook tracebacks. Runtime regression tests now exercise real `UserPromptSubmit`, `PostToolUse:Bash`, and `Stop` payloads.
 
 ## Core behavior
 
