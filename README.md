@@ -2,7 +2,7 @@
 
 High Agency is a lightweight coding scaffold designed to use the LLM's own capability first, then spend extra process, stronger models, or deeper reasoning only where they materially improve correctness.
 
-Current version: **0.8.1**
+Current version: **0.9.0**
 
 ## Install
 
@@ -81,6 +81,35 @@ Important diagnostics:
 
 Doctor never probes every model by default.
 
+## Impact calibration
+
+Before the first code/config mutation, High Agency now asks the model to commit to one compact scope estimate:
+
+```text
+Impact: local | files<=2 | modules<=1 | boundary=private
+```
+
+The first estimate is immutable. The model should not rewrite it later to match what happened.
+
+At completion, the hook compares the actual Git diff against that estimate:
+
+```text
+match
+→ keep targeted verification
+
+minor drift
+→ extend verification only to the newly affected surface
+
+major drift / unexpected high-impact boundary
+→ inspect the focused final diff
+→ broaden verification only for the expanded risk
+→ escalate model/reasoning only if the new scope creates a real cognitive bottleneck
+```
+
+The hook objectively checks file count, module spread, truncated change sets, and known high-impact paths such as auth/security/schema/dependency/build/deploy surfaces. Public/shared API drift that cannot be inferred reliably from paths remains a semantic final-diff check for the model.
+
+If no valid estimate was produced, High Agency falls back to its fixed safety heuristics rather than silently assuming the task is local.
+
 ## Verification
 
 Verification expands only when risk expands:
@@ -106,14 +135,9 @@ The hook does not run project tests automatically.
 
 ## Conditional review
 
-Focused final diff review triggers only for risk signals such as:
+Focused final diff review is calibration-aware. When a valid impact estimate exists, ordinary file/module growth is judged against that estimate rather than a fixed count. High-impact shared paths and unusually large diffs remain safety nets. If no estimate exists, fixed multi-file/cross-module heuristics remain the fallback.
 
-- 3+ code/config files;
-- cross-module/package changes;
-- schema/migrations, dependencies/lockfiles, build/deploy config, auth/security/permissions;
-- a large diff.
-
-Small local fixes normally skip an extra review stage.
+Small changes that stay inside their predicted scope normally skip an extra review stage.
 
 ## Bounded autonomy
 
@@ -368,13 +392,15 @@ End-to-end success claims are intentionally not published without equal-model/eq
 
 ## Development status
 
-**v0.8.0 is the current feature-freeze baseline.**
+**v0.9.0 is the current evaluation baseline.**
 
-Further runtime features, routing rules, thresholds, or orchestration complexity will not be added based on intuition alone. The next behavioral changes should be driven by real end-to-end Codex/Claude Code runs using the existing `evals/` scenarios and comparable model/budget settings.
+Further runtime features, routing rules, thresholds, or orchestration complexity should not be added based on intuition alone. The next behavioral changes should be driven by real end-to-end Codex/Claude Code runs using the existing `evals/` scenarios and comparable model/budget settings, including impact-estimate calibration.
 
 Before changing the runtime, collect evidence such as:
 
 - task success and false-completion rate;
+- impact underestimation / overestimation rate;
+- match / minor-drift / major-drift frequency;
 - tokens/tool calls/wall time;
 - unnecessary delegation or duplicate work;
 - targeted vs affected vs full verification frequency;
