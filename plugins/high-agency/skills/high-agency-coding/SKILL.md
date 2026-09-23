@@ -34,6 +34,28 @@ For a local reversible change:
 
 For uncertain or multi-step work, keep a short working plan in context. Ask the user only when materially different interpretations affect outcomes, side effects, or irreversible choices.
 
+## Impact calibration
+
+After enough inspection to understand the likely change, but **before the first code/config mutation**, write exactly one compact estimate:
+
+```text
+Impact: local | files<=2 | modules<=1 | boundary=private
+```
+
+Use:
+- `local | propagating | high` for expected risk tier;
+- an upper bound for changed code/config files and modules;
+- `boundary=private | shared-api | high-impact`.
+
+Keep the **first estimate immutable**. If the task grows, record scope drift; do not rewrite the estimate to match what happened.
+
+Before finishing, compare the actual diff against that estimate:
+- **match** → keep the normal targeted-verification path;
+- **minor drift** → extend verification only to the newly affected surface;
+- **major drift or boundary expansion** → inspect the focused final diff, broaden verification only for the expanded risk, and escalate model/reasoning only if the new scope creates a real cognitive bottleneck.
+
+The hook can verify file/module spread and known high-impact paths. Public/shared API drift that cannot be inferred from paths must be checked semantically from the final diff.
+
 ## Adaptive orchestration
 
 Delegation is an optimization, not a ritual.
