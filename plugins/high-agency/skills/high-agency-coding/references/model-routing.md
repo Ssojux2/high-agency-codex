@@ -10,6 +10,8 @@ Do not switch models merely because multiple models exist. Context handoff has a
 
 The main thread keeps integration authority. Prefer native Codex subagents with an explicit model and reasoning effort when supported. Do **not** launch nested `codex exec` processes only to change models.
 
+The parent skill performs routing preflight before the first mutation. Treat a non-DIRECT classification as an execution decision. Dispatch the matching native subagent with explicit model/reasoning fields when the runtime exposes them; do not merely describe the preferred model in prose.
+
 If a requested model is unavailable, use the nearest available capability tier or the current model and continue.
 
 ## Routing table
@@ -97,7 +99,7 @@ Do not block the task because a preferred delegated model is unavailable. Preser
 
 If multi-agent tools are disabled, skip the chain entirely and continue single-agent with the current model.
 
-Do not silently substitute a weaker model while claiming the stronger model ran. Report the fallback only when it materially affects confidence or cost.
+Do not silently substitute a weaker model while claiming the stronger model ran. A routing choice counts as executed only when the delegated subagent was actually spawned. When runtime metadata exposes the effective served model/reasoning, record it; when it does not, report the requested route and that model identity remains unverified. Report a fallback when it materially affects confidence or cost.
 
 
 ## Delegation budget
