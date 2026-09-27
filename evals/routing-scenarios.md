@@ -3,6 +3,7 @@
 Evaluate routing only on tasks where the expected execution shape is clear. The goal is not "more delegation"; it is the smallest sufficient model/effort configuration.
 
 Record:
+- preflight classification before the first mutation;
 - main model/effort;
 - delegated model/effort or role;
 - number of agents;
@@ -53,3 +54,16 @@ Record:
 
 10. **Unavailable preferred model**
     - Expected: graceful fallback to nearest available tier/current model without blocking the task.
+
+
+## Runtime routing evidence
+
+For every scenario that expects delegation, distinguish **policy selection** from **runtime execution**.
+
+Record:
+- whether a native subagent was actually spawned;
+- requested model and reasoning effort;
+- effective model/reasoning metadata when the runtime exposes it;
+- fallback/default route when explicit per-spawn model selection is unavailable.
+
+A prose recommendation such as "use Astra" without a native subagent dispatch is a routing failure, not a successful adaptive route.
