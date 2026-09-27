@@ -2,7 +2,7 @@
 
 High Agency is a lightweight coding scaffold designed to use the LLM's own capability first, then spend extra process, stronger models, or deeper reasoning only where they materially improve correctness.
 
-Current version: **0.10.0**
+Current version: **0.10.1**
 
 ## Install
 
@@ -46,7 +46,17 @@ The main thread remains the integrator.
 
 **Important:** the skill does not silently change the primary session's `/model`. It uses the current main model directly when that is efficient and routes only bounded subproblems to other models. If native subagents or a requested model are unavailable, it stays single-agent or uses the nearest available tier.
 
-Before the first code/config mutation, High Agency now performs a lightweight routing preflight: DIRECT, CHEAP DELEGATE, BROAD MAP, WORKHORSE, or STRONG REASONING. Non-DIRECT routes load `skills/high-agency-coding/references/model-routing.md` immediately, so the current model does not need to fail first before discovering the appropriate tier.
+Before the first code/config mutation, High Agency now emits one unified preflight from the same read-only inspection:
+
+```text
+Preflight: <short task-shape summary>
+Complexity: low | medium | high | frontier
+Route: DIRECT | CHEAP DELEGATE | BROAD MAP | WORKHORSE | STRONG REASONING
+Model: <current main model or exact delegated model + reasoning effort>
+Impact: local | files<=N | modules<=N | boundary=private|shared-api|high-impact
+```
+
+The summary, complexity, route, model, and impact estimate are one decision. For non-DIRECT routes, the requested native subagent model/reasoning should match the preflight `Model:` line when the runtime supports explicit per-spawn selection.
 
 A routing choice counts as executed only when a native Codex subagent is actually spawned. When supported, the spawn should carry the intended model and reasoning effort explicitly. Merely recommending Astra/Sol/Terra/Luna in prose is not considered successful routing. If the runtime cannot select a model per spawn, High Agency reports the effective fallback/default route instead of pretending the requested model ran.
 
@@ -85,13 +95,7 @@ Doctor never probes every model by default.
 
 ## Impact calibration
 
-Before the first code/config mutation, High Agency now asks the model to commit to one compact scope estimate:
-
-```text
-Impact: local | files<=2 | modules<=1 | boundary=private
-```
-
-The first estimate is immutable. The model should not rewrite it later to match what happened.
+The `Impact:` line is now the final line of the unified preflight. The first estimate remains immutable so existing scope-drift hooks can use it as the baseline. The model should not rewrite it later to match what happened.
 
 At completion, the hook compares the actual Git diff against that estimate:
 
@@ -394,9 +398,9 @@ End-to-end success claims are intentionally not published without equal-model/eq
 
 ## Development status
 
-**v0.10.0 is the current evaluation baseline.**
+**v0.10.1 is the current evaluation baseline.**
 
-v0.10.0 fixes the previous self-gating routing pattern and separates policy selection from runtime execution. Routing evals now require evidence that a native subagent was actually dispatched rather than checking only that model names exist in policy text.
+v0.10.1 unifies task summary, complexity, route, model choice, and impact calibration into one pre-mutation decision. Routing evals also require the actual native spawn request to correspond to that preflight decision when the runtime exposes per-spawn model controls.
 
 Further runtime features, routing rules, thresholds, or orchestration complexity should not be added based on intuition alone. The next behavioral changes should be driven by real end-to-end Codex/Claude Code runs using the existing `evals/` scenarios and comparable model/budget settings, including impact-estimate calibration.
 
