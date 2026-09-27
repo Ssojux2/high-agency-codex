@@ -2,7 +2,7 @@
 
 High Agency is a lightweight coding scaffold designed to use the LLM's own capability first, then spend extra process, stronger models, or deeper reasoning only where they materially improve correctness.
 
-Current version: **0.9.0**
+Current version: **0.10.0**
 
 ## Install
 
@@ -46,7 +46,9 @@ The main thread remains the integrator.
 
 **Important:** the skill does not silently change the primary session's `/model`. It uses the current main model directly when that is efficient and routes only bounded subproblems to other models. If native subagents or a requested model are unavailable, it stays single-agent or uses the nearest available tier.
 
-The detailed routing table lives in `skills/high-agency-coding/references/model-routing.md` and is loaded only when delegation is justified.
+Before the first code/config mutation, High Agency now performs a lightweight routing preflight: DIRECT, CHEAP DELEGATE, BROAD MAP, WORKHORSE, or STRONG REASONING. Non-DIRECT routes load `skills/high-agency-coding/references/model-routing.md` immediately, so the current model does not need to fail first before discovering the appropriate tier.
+
+A routing choice counts as executed only when a native Codex subagent is actually spawned. When supported, the spawn should carry the intended model and reasoning effort explicitly. Merely recommending Astra/Sol/Terra/Luna in prose is not considered successful routing. If the runtime cannot select a model per spawn, High Agency reports the effective fallback/default route instead of pretending the requested model ran.
 
 Explicit fallback chains keep work moving when a preferred delegated model is unavailable: Luna→Terra→main for mechanical work, Terra→Sol→main for mapping, Sol→main for implementation, and Astra→Sol→main for hard reasoning.
 
@@ -392,7 +394,9 @@ End-to-end success claims are intentionally not published without equal-model/eq
 
 ## Development status
 
-**v0.9.0 is the current evaluation baseline.**
+**v0.10.0 is the current evaluation baseline.**
+
+v0.10.0 fixes the previous self-gating routing pattern and separates policy selection from runtime execution. Routing evals now require evidence that a native subagent was actually dispatched rather than checking only that model names exist in policy text.
 
 Further runtime features, routing rules, thresholds, or orchestration complexity should not be added based on intuition alone. The next behavioral changes should be driven by real end-to-end Codex/Claude Code runs using the existing `evals/` scenarios and comparable model/budget settings, including impact-estimate calibration.
 
