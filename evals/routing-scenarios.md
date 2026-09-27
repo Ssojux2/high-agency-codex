@@ -3,7 +3,7 @@
 Evaluate routing only on tasks where the expected execution shape is clear. The goal is not "more delegation"; it is the smallest sufficient model/effort configuration.
 
 Record:
-- preflight classification before the first mutation;
+- the exact five-line unified preflight before the first mutation;
 - main model/effort;
 - delegated model/effort or role;
 - number of agents;
@@ -58,11 +58,11 @@ Record:
 
 ## Runtime routing evidence
 
-For every scenario that expects delegation, distinguish **policy selection** from **runtime execution**.
+For every scenario that expects delegation, verify that the `Route` and `Model` in the unified preflight match the task shape, then distinguish **policy selection** from **runtime execution**.
 
 Record:
 - whether a native subagent was actually spawned;
-- requested model and reasoning effort;
+- requested model and reasoning effort, which should match the preflight `Model:` line;
 - effective model/reasoning metadata when the runtime exposes it;
 - fallback/default route when explicit per-spawn model selection is unavailable.
 
