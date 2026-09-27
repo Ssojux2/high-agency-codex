@@ -34,6 +34,22 @@ For a local reversible change:
 
 For uncertain or multi-step work, keep a short working plan in context. Ask the user only when materially different interpretations affect outcomes, side effects, or irreversible choices.
 
+## Routing preflight
+
+Before the first code/config mutation, classify the task once. This is a lightweight routing decision, not a planning ceremony.
+
+- **DIRECT** — local, obvious, bounded work: stay on the current main model.
+- **CHEAP DELEGATE** — deterministic search, simple command/test reporting, or mechanical bounded work: route to the cheapest suitable native subagent.
+- **BROAD MAP** — large unfamiliar codebase mapping, dependency tracing, docs/API lookup, or first-pass triage: route to a breadth-oriented native subagent.
+- **WORKHORSE** — isolated implementation/refactor/debugging where delegation saves main-context cost or enables genuinely independent work: route to a workhorse coding subagent.
+- **STRONG REASONING** — ambiguous architecture, security/high-impact boundaries, difficult cross-system reasoning, or a root cause whose answer materially changes implementation: route the reasoning bottleneck to the strongest suitable native subagent before implementation.
+
+If the classification is anything other than **DIRECT**, read `references/model-routing.md` before continuing. Do not first attempt the whole problem on the current model merely to earn permission to route it.
+
+A model-routing decision is executed only when a native Codex subagent is actually spawned with the intended model and reasoning effort when the runtime supports those fields. Merely saying that Astra/Sol/Terra/Luna should be used is not execution. If explicit per-spawn model selection is unavailable, stay honest about the effective route and use the supported default/fallback instead.
+
+The main thread remains the integrator; the preflight selects where cognition should happen, not which model owns the whole session.
+
 ## Impact calibration
 
 After enough inspection to understand the likely change, but **before the first code/config mutation**, write exactly one compact estimate:
@@ -69,7 +85,7 @@ Stay single-agent unless at least one is true:
 - a bounded mechanical/repetitive subtask can be offloaded much more cheaply;
 - the user explicitly asks for multi-model work.
 
-When one of these triggers is present, read `references/model-routing.md` and use the smallest useful delegation pattern.
+These triggers are also inputs to the routing preflight above. When one is present, use the smallest useful native delegation pattern from `references/model-routing.md` rather than defaulting to a full main-model attempt first.
 
 The main thread remains the integrator. Give subagents narrow goals and ask for concise evidence, not long prose. Do not delegate a task that the current model can finish faster with context it already holds.
 
