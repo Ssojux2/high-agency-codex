@@ -13,6 +13,21 @@ class RoutingPolicyTests(unittest.TestCase):
         self.assertIn("Start single-agent with the current model", text)
         self.assertIn("read `references/model-routing.md`", text)
 
+    def test_preflight_routes_before_mutation(self):
+        text = SKILL.read_text(encoding="utf-8")
+        self.assertIn("## Routing preflight", text)
+        self.assertIn("Before the first code/config mutation", text)
+        self.assertIn("Do not first attempt the whole problem on the current model merely to earn permission to route it", text)
+        for route in ("DIRECT", "CHEAP DELEGATE", "BROAD MAP", "WORKHORSE", "STRONG REASONING"):
+            self.assertIn(route, text)
+
+    def test_routing_requires_native_dispatch(self):
+        skill = SKILL.read_text(encoding="utf-8")
+        routing = ROUTING.read_text(encoding="utf-8")
+        self.assertIn("native Codex subagent is actually spawned", skill)
+        self.assertIn("Merely saying that Astra/Sol/Terra/Luna should be used is not execution", skill)
+        self.assertIn("counts as executed only when the delegated subagent was actually spawned", routing)
+
     def test_openai_model_tiers_are_present(self):
         text = ROUTING.read_text(encoding="utf-8")
         for model in (
