@@ -110,5 +110,20 @@ class ImpactScopeTests(unittest.TestCase):
         self.assertEqual(drift["severity"], "none")
 
 
+    def test_parse_impact_inside_unified_preflight(self):
+        estimate = parse_impact(
+            "Preflight: trace unfamiliar dependency path\n"
+            "Complexity: medium\n"
+            "Route: BROAD MAP\n"
+            "Model: gpt-5.6-terra medium\n"
+            "Impact: propagating | files<=4 | modules<=2 | boundary=private"
+        )
+        self.assertIsNotNone(estimate)
+        self.assertEqual(estimate["tier"], "propagating")
+        self.assertEqual(estimate["files_max"], 4)
+        self.assertEqual(estimate["modules_max"], 2)
+        self.assertEqual(estimate["boundary"], "private")
+
+
 if __name__ == "__main__":
     unittest.main()
