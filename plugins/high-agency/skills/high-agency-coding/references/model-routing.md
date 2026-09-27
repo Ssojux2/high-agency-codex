@@ -10,7 +10,7 @@ Do not switch models merely because multiple models exist. Context handoff has a
 
 The main thread keeps integration authority. Prefer native Codex subagents with an explicit model and reasoning effort when supported. Do **not** launch nested `codex exec` processes only to change models.
 
-The parent skill performs routing preflight before the first mutation. Treat a non-DIRECT classification as an execution decision. Dispatch the matching native subagent with explicit model/reasoning fields when the runtime exposes them; do not merely describe the preferred model in prose.
+The parent skill emits one unified preflight before the first mutation. Its `Route` and `Model` lines are the execution decision, not commentary. For a non-DIRECT route, spawn the matching native subagent and, when supported, pass explicit model/reasoning fields that match `Model`.
 
 If a requested model is unavailable, use the nearest available capability tier or the current model and continue.
 
