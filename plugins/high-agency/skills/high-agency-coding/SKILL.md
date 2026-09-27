@@ -34,38 +34,48 @@ For a local reversible change:
 
 For uncertain or multi-step work, keep a short working plan in context. Ask the user only when materially different interpretations affect outcomes, side effects, or irreversible choices.
 
-## Routing preflight
+## Unified preflight
 
-Before the first code/config mutation, classify the task once. This is a lightweight routing decision, not a planning ceremony.
-
-- **DIRECT** — local, obvious, bounded work: stay on the current main model.
-- **CHEAP DELEGATE** — deterministic search, simple command/test reporting, or mechanical bounded work: route to the cheapest suitable native subagent.
-- **BROAD MAP** — large unfamiliar codebase mapping, dependency tracing, docs/API lookup, or first-pass triage: route to a breadth-oriented native subagent.
-- **WORKHORSE** — isolated implementation/refactor/debugging where delegation saves main-context cost or enables genuinely independent work: route to a workhorse coding subagent.
-- **STRONG REASONING** — ambiguous architecture, security/high-impact boundaries, difficult cross-system reasoning, or a root cause whose answer materially changes implementation: route the reasoning bottleneck to the strongest suitable native subagent before implementation.
-
-If the classification is anything other than **DIRECT**, read `references/model-routing.md` before continuing. Do not first attempt the whole problem on the current model merely to earn permission to route it.
-
-A model-routing decision is executed only when a native Codex subagent is actually spawned with the intended model and reasoning effort when the runtime supports those fields. Merely saying that Astra/Sol/Terra/Luna should be used is not execution. If explicit per-spawn model selection is unavailable, stay honest about the effective route and use the supported default/fallback instead.
-
-The main thread remains the integrator; the preflight selects where cognition should happen, not which model owns the whole session.
-
-## Impact calibration
-
-After enough inspection to understand the likely change, but **before the first code/config mutation**, write exactly one compact estimate:
+After enough read-only inspection to understand the likely task shape, but **before the first code/config mutation**, write exactly one compact five-line preflight block:
 
 ```text
+Preflight: <one short task-shape summary>
+Complexity: low | medium | high | frontier
+Route: DIRECT | CHEAP DELEGATE | BROAD MAP | WORKHORSE | STRONG REASONING
+Model: <current main model or exact delegated model + reasoning effort>
 Impact: local | files<=2 | modules<=1 | boundary=private
 ```
+
+Derive all five lines from the **same inspection**. Do not summarize first and then independently reconsider routing.
+
+Use this mapping:
+
+- **DIRECT** — local, obvious, bounded work. `Model: current main model`.
+- **CHEAP DELEGATE** — deterministic search, simple command/test reporting, or mechanical bounded work. Prefer `gpt-5.6-luna low/medium`.
+- **BROAD MAP** — large unfamiliar codebase mapping, dependency tracing, docs/API lookup, or first-pass triage. Prefer `gpt-5.6-terra medium`.
+- **WORKHORSE** — isolated implementation/refactor/debugging where delegation saves main-context cost or enables genuinely independent work. Prefer `gpt-5.6-sol medium/high`.
+- **STRONG REASONING** — ambiguous architecture, security/high-impact boundaries, difficult cross-system reasoning, or a root cause whose answer materially changes implementation. Prefer `gpt-6-astra high/xhigh`; reserve max for exceptional unresolved reasoning.
+
+If `Route` is anything other than **DIRECT**, read `references/model-routing.md` and spawn the selected native Codex subagent before performing the delegated cognitive work. When the runtime supports per-spawn model/reasoning fields, the actual spawn request must match the preflight `Model:` line.
+
+Merely saying that Astra/Sol/Terra/Luna should be used is not execution. If explicit per-spawn model selection is unavailable, record the supported fallback/default route and do not claim the requested model ran.
+
+The preflight selects the **primary cognitive bottleneck**. Add another delegated model later only when new evidence creates a distinct need; do not fan out just because multiple models exist.
+
+The main thread remains the integrator. The preflight does not silently replace the primary session model.
+
+### Preflight immutability and drift
+
+The first `Impact:` line is immutable because the hooks use it as the scope baseline. If the task grows, record scope drift rather than rewriting the original preflight.
 
 Use:
 - `local | propagating | high` for expected risk tier;
 - an upper bound for changed code/config files and modules;
 - `boundary=private | shared-api | high-impact`.
 
-Keep the **first estimate immutable**. If the task grows, record scope drift; do not rewrite the estimate to match what happened.
+If later evidence changes only the routing need, record a concise routing escalation/fallback and execute it; do not emit a replacement preflight.
 
-Before finishing, compare the actual diff against that estimate:
+Before finishing, compare the actual diff against the original Impact estimate:
 - **match** → keep the normal targeted-verification path;
 - **minor drift** → extend verification only to the newly affected surface;
 - **major drift or boundary expansion** → inspect the focused final diff, broaden verification only for the expanded risk, and escalate model/reasoning only if the new scope creates a real cognitive bottleneck.
@@ -85,7 +95,7 @@ Stay single-agent unless at least one is true:
 - a bounded mechanical/repetitive subtask can be offloaded much more cheaply;
 - the user explicitly asks for multi-model work.
 
-These triggers are also inputs to the routing preflight above. When one is present, use the smallest useful native delegation pattern from `references/model-routing.md` rather than defaulting to a full main-model attempt first.
+These triggers are also inputs to the unified preflight above. When one is present, use the smallest useful native delegation pattern from `references/model-routing.md` rather than defaulting to a full main-model attempt first.
 
 The main thread remains the integrator. Give subagents narrow goals and ask for concise evidence, not long prose. Do not delegate a task that the current model can finish faster with context it already holds.
 
