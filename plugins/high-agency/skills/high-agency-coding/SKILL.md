@@ -42,23 +42,25 @@ After enough read-only inspection to understand the likely task shape, but **bef
 Preflight: <one short task-shape summary>
 Complexity: low | medium | high | frontier
 Route: DIRECT | CHEAP DELEGATE | BROAD MAP | WORKHORSE | STRONG REASONING
-Model: <current main model or exact delegated model + reasoning effort>
+Model: <current main model or exact catalog model ID + supported reasoning effort>
 Impact: local | files<=2 | modules<=1 | boundary=private
 ```
 
 Derive all five lines from the **same inspection**. Do not summarize first and then independently reconsider routing.
 
+Before a non-DIRECT preflight, read `references/model-routing.md` and resolve the latest available model for the chosen capability family from the current runtime catalog. Model names remembered from training, old conversations, examples, or a previous session are not a model catalog. Refresh once per task before the first delegation, and again after an account/provider/client change or a model rejection. DIRECT tasks do not need a model lookup.
+
 Use this mapping:
 
 - **DIRECT** — local, obvious, bounded work. `Model: current main model`.
-- **CHEAP DELEGATE** — deterministic search, simple command/test reporting, or mechanical bounded work. Prefer `gpt-5.6-luna low/medium`.
-- **BROAD MAP** — large unfamiliar codebase mapping, dependency tracing, docs/API lookup, or first-pass triage. Prefer `gpt-5.6-terra medium`.
-- **WORKHORSE** — isolated implementation/refactor/debugging where delegation saves main-context cost or enables genuinely independent work. Prefer `gpt-5.6-sol medium/high`.
-- **STRONG REASONING** — ambiguous architecture, security/high-impact boundaries, difficult cross-system reasoning, or a root cause whose answer materially changes implementation. Prefer `gpt-6-astra high/xhigh`; reserve max for exceptional unresolved reasoning.
+- **CHEAP DELEGATE** — deterministic search, simple command/test reporting, or mechanical bounded work. Prefer the latest available Luna with a supported low/medium effort.
+- **BROAD MAP** — large unfamiliar codebase mapping, dependency tracing, docs/API lookup, or first-pass triage. Prefer the latest available Sol with a supported medium effort; Terra is a compatibility fallback.
+- **WORKHORSE** — isolated implementation/refactor/debugging where delegation saves main-context cost or enables genuinely independent work. Prefer the latest available Sol with a supported medium/high effort.
+- **STRONG REASONING** — ambiguous architecture, security/high-impact boundaries, difficult cross-system reasoning, or a root cause whose answer materially changes implementation. Prefer the latest available Astra with a supported high/xhigh effort; reserve max for exceptional unresolved reasoning and only when advertised by the runtime.
 
-If `Route` is anything other than **DIRECT**, read `references/model-routing.md` and spawn the selected native Codex subagent before performing the delegated cognitive work. When the runtime supports per-spawn model/reasoning fields, the actual spawn request must match the preflight `Model:` line.
+If `Route` is anything other than **DIRECT**, read `references/model-routing.md` and spawn the selected native Codex subagent before performing the delegated cognitive work. When the runtime supports per-spawn model/reasoning fields, the actual spawn request must match the preflight `Model:` line, using the exact catalog model ID rather than a family label.
 
-Merely saying that Astra/Sol/Terra/Luna should be used is not execution. If explicit per-spawn model selection is unavailable, record the supported fallback/default route and do not claim the requested model ran.
+Merely saying that Astra/Sol/Terra/Luna should be used is not execution. If explicit per-spawn model selection is unavailable, record the supported fallback/default route and do not claim the requested model ran. If the catalog cannot be obtained, keep the current main model, mark latest availability unverified, and do not guess a versioned model ID.
 
 The preflight selects the **primary cognitive bottleneck**. Add another delegated model later only when new evidence creates a distinct need; do not fan out just because multiple models exist.
 

@@ -26,15 +26,16 @@ class CodexDoctorContractTests(unittest.TestCase):
 
     def test_explicit_fallbacks_exist(self):
         text = ROUTING.read_text(encoding="utf-8")
-        for fragment in (
-            "gpt-5.6-luna",
-            "gpt-5.6-terra",
-            "gpt-5.6-sol",
-            "gpt-6-astra",
-            "current main model",
-        ):
+        for fragment in ("Luna", "Terra", "Sol", "Astra", "current main model"):
             self.assertIn(fragment, text)
         self.assertIn("Explicit fallback chains", text)
+        self.assertIn("current catalog", text)
+
+    def test_catalog_lookup_is_not_a_model_probe(self):
+        text = DOCTOR.read_text(encoding="utf-8")
+        self.assertIn("model_catalog.py", text)
+        self.assertIn("metadata query, not an inference/model probe", text)
+        self.assertIn("failed lookup is **UNVERIFIED**", text)
 
 
 if __name__ == "__main__":

@@ -35,6 +35,14 @@ Report only:
 
 Also remind the user that session/CLI overrides may differ; `/status` is the authoritative interactive view for the current session.
 
+## Current model catalog
+
+Read `../high-agency-coding/references/model-routing.md`. Prefer the active host's complete `model/list` response. In a matching local account/provider/profile, run `python3 "<installed-plugin-root>/scripts/model_catalog.py"` to inspect available role models and supported reasoning efforts. Resolve the script from the installed skill path, not the project working directory.
+
+This is a metadata query, not an inference/model probe. It sends no prompt and starts no thread or turn. Do not install another SDK or read credentials. Skip the CLI helper when its configuration differs from the active host; use the host catalog instead. A saved JSON catalog must have current provenance.
+
+Report catalog source, lookup time, selected IDs, supported efforts, fallback, and whether latest availability could be checked. A failed lookup is **UNVERIFIED**, not proof the account lacks access. A catalog entry does not prove that a subagent actually ran. Do not change user/admin pins or global configuration to make a model appear available.
+
 ## Interpret
 
 Flag these conditions:
@@ -43,21 +51,23 @@ Flag these conditions:
 - **WARN** `allow_managed_hooks_only = true`: bundled High Agency hooks may be skipped unless deployed as managed hooks.
 - **INFO** low concurrency: parallel delegation may be limited, but correctness should not depend on parallelism.
 - **INFO** default subagent model/effort: explicit High Agency spawn settings take precedence when the runtime supports them.
-- **UNVERIFIED** model availability: static config cannot prove that Astra/Sol/Terra/Luna are actually available to the current account/provider.\n- **UNVERIFIED** bundled hook trust: Codex requires plugin hooks to be reviewed/trusted; static config alone may not prove the current hook trust state. Ask the user to inspect `/hooks` when hook behavior is unexpectedly absent.
+- **WARN** configured model is older than the latest available version of its family: report the mismatch; do not rewrite an intentional pin.
+- **UNVERIFIED** model availability: static config cannot prove that Astra/Sol/Terra/Luna are actually available to the current account/provider.
+- **UNVERIFIED** bundled hook trust: Codex requires plugin hooks to be reviewed/trusted; static config alone may not prove the current hook trust state. Ask the user to inspect `/hooks` when hook behavior is unexpectedly absent.
 
 Do not treat an absent optional setting as an error.
 
 ## Routing contract
 
-Expected fallback chains:
+Resolve the latest available version and supported effort for every candidate in these fallback chains:
 
-- mechanical/test reporting: **Luna → Terra low/medium → current main model**
-- broad mapping/triage: **Terra → Sol medium → current main model**
+- mechanical/test reporting: **Luna → Terra low/medium → Sol low/medium → current main model**
+- broad mapping/triage: **Sol medium → Terra medium → current main model**
 - normal delegated implementation: **Sol → current main model**
 - hard architecture/root cause/security: **Astra high/xhigh → Sol high/xhigh → current main model**
 - exceptional max-depth reasoning: **Astra max → Astra xhigh/high → Sol xhigh/high → current main model**
 
-Fallback must preserve the task instead of blocking because a preferred model is unavailable.
+Fallback must preserve the task instead of blocking because a preferred model is unavailable. No fixed release ID is a fallback catalog. After rejection, refresh at most once, exclude the rejected ID (`--exclude-model`), and attempt at most one supported fallback before continuing on the main model.
 
 ## Optional model probe
 

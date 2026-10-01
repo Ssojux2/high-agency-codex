@@ -14,25 +14,45 @@ The parent skill emits one unified preflight before the first mutation. Its `Rou
 
 If a requested model is unavailable, use the nearest available capability tier or the current model and continue.
 
+## Current model catalog — resolve before routing
+
+Use the current account/provider/client model list, not a hard-coded release table. The family names below are policy, never literal spawn IDs.
+
+1. Prefer the active runtime's `model/list` response. Read all pages (`nextCursor`) with `includeHidden: false`. Do not use an API account's catalog as proof of a different ChatGPT account's availability.
+2. In a local CLI environment with the same account, provider, profile and configuration, the bundled helper can read the catalog without sending an inference request:
+
+   ```sh
+   python3 "<installed-plugin-root>/scripts/model_catalog.py"
+   ```
+
+   Resolve the installed plugin root from this skill's actual path, not the project working directory. The helper only sends `initialize`, `initialized`, and `model/list` to `codex app-server`; it does not start a thread/turn, launch `codex exec`, read credentials directly, install an SDK, or edit configuration. If CLI overrides differ from the active session, use the host's catalog instead.
+3. To resolve a complete catalog already supplied by the host, pass its JSON result via `--catalog <file>` or `--catalog -` on stdin. This must be current data from the active account/provider; a saved file is not automatically fresh. Incomplete pagination is rejected.
+4. Select the latest available stable numeric version **within the required family**. Compare version components numerically, not alphabetically. Exclude hidden/disabled/unavailable entries. Never fabricate a newer ID, assume a preview is stable, or use a model merely because a public announcement mentions it.
+5. Use only `supportedReasoningEfforts` returned for the selected model. When the desired level is missing, use an advertised lower/default level; omit the override if no supported level is known. Never assume `max` is universal.
+6. Resolve once per task before the first delegation. Reuse that result only while account, provider, profile, client and model availability are unchanged. Refresh after a model rejection; do not retry the same rejected ID or loop indefinitely. Use at most one refreshed fallback attempt, then the current main model.
+7. Missing executable, timeout, malformed/empty catalog, unknown families, or disabled native delegation: keep the current main model and report latest availability unverified. Do not resurrect an old bundled model list. The helper exits 2 on lookup failure with safe fallback JSON.
+
+Record catalog source, lookup time, requested model/effort, fallback, and the effective served model when exposed. Catalog lookup proves a selection source, not that an inference ran. Respect explicit user/admin pins; disclose conflicts rather than rewriting global configuration.
+
 ## Routing table
 
-| Subtask | Preferred model | Effort | Notes |
+| Subtask | Preferred family (latest available version) | Desired effort | Notes |
 |---|---|---|---|
-| Mechanical search, grep, file inventory, command execution, simple test reporting | `gpt-5.6-luna` | low–medium | Cheap, bounded, repetitive work |
-| Large codebase mapping, dependency tracing, docs/API lookup, first-pass test triage | `gpt-5.6-terra` | medium | Read-heavy work where breadth matters |
-| Normal implementation, refactor, integration, focused debugging | `gpt-5.6-sol` | medium–high | Default delegated builder |
-| Complex architecture, ambiguous multi-system plan, difficult root cause, security-critical reasoning, final synthesis when consequences are high | `gpt-6-astra` | high–xhigh | Use only at leverage points |
-| Extremely hard unresolved reasoning after strong attempts | `gpt-6-astra` | max | Rare; do not make this the default |
+| Mechanical search, grep, inventory, command execution, simple test reporting | Luna | low–medium | Cheap, bounded, repetitive work |
+| Large codebase mapping, dependency tracing, docs/API lookup, first-pass test triage | Sol | medium | Terra only when Sol is unavailable |
+| Normal implementation, refactor, integration, focused debugging | Sol | medium–high | Default delegated builder |
+| Complex architecture, ambiguous multi-system plan, difficult root cause, security-critical reasoning, high-consequence synthesis | Astra | high–xhigh | Use only at leverage points |
+| Extremely hard unresolved reasoning after strong attempts | Astra | max, only if supported | Rare; never the default |
 
-Astra supports `low|medium|high|xhigh|max`; GPT-5.6 models also support lower effort levels. Never request an unsupported effort.
+The helper returns conservative initial efforts. Escalate only to a level advertised in the same current catalog. A latest-family policy does not automatically choose the most expensive family for every task.
 
 ## Stage guidance
 
 ### Planning / architecture
 
 - Local and obvious: current main model; no subagent.
-- Normal multi-step: Sol high, or current model if already equally capable.
-- Broad repo mapping first: Terra medium; return interfaces, dependencies, and unknowns only.
+- Normal multi-step: latest available Sol with supported high effort, or current model if already equally capable.
+- Broad repo mapping first: Sol medium; Terra medium only as a compatibility fallback. Return interfaces, dependencies, and unknowns only.
 - High-impact or ambiguous architecture: Astra high/xhigh for a concise decision memo, then return implementation to the main thread/Sol.
 
 Do not use Astra to write a routine plan.
@@ -40,17 +60,17 @@ Do not use Astra to write a routine plan.
 ### Implementation
 
 - Small bounded edit: current model directly.
-- Standard implementation: current model or Sol medium/high.
-- Mechanical repeated edits with a precise transformation: Terra medium; Luna only if the transformation is deterministic and easy to verify.
+- Standard implementation: current model or latest available Sol medium/high.
+- Mechanical repeated edits with a precise transformation: Luna when deterministic and easy to verify; otherwise Sol.
 - Cross-cutting/novel implementation where design and code are tightly coupled: Sol high; Astra only if the hard reasoning cannot be isolated from implementation.
 
 Avoid multiple writing agents touching overlapping files.
 
 ### Testing / verification
 
-- Running commands and summarizing results: Luna low.
-- Mapping failures to likely affected areas: Terra medium.
-- Non-obvious failure triage: Terra high or Sol high.
+- Running commands and summarizing results: latest available Luna with supported low effort.
+- Mapping failures to likely affected areas: Sol medium; Terra only as a compatibility fallback.
+- Non-obvious failure triage: Sol high.
 - Deep failure after two evidence-based attempts: escalate once to Sol/Astra rather than adding blind iterations.
 
 The main thread decides whether evidence proves the acceptance criteria.
@@ -58,7 +78,7 @@ The main thread decides whether evidence proves the acceptance criteria.
 ### Review
 
 - Small local change: no extra reviewer.
-- Conditional focused review: Terra high or Sol high.
+- Conditional focused review: Sol high.
 - Security/auth/schema/high-impact architecture: Astra high for the risky surface only.
 
 ## Effort policy
@@ -67,7 +87,7 @@ The main thread decides whether evidence proves the acceptance criteria.
 - **medium** — normal bounded reasoning.
 - **high** — complex logic, debugging, review, integration.
 - **xhigh** — ambiguous/high-impact reasoning where missing an edge case is costly.
-- **max** — rare last escalation for the hardest unresolved cognition.
+- **max** — rare last escalation for the hardest unresolved cognition, only if supported.
 
 Start lower when success is easy to verify. Escalate effort before escalating model only when the current model is otherwise appropriate.
 
@@ -89,18 +109,19 @@ Return only findings, decisions, file references, commands, and evidence needed 
 
 ## Explicit fallback chains
 
-Do not block the task because a preferred delegated model is unavailable. Preserve the subtask and fall back deterministically:
+Every family below means its latest available version in the current catalog; every effort must be supported.
 
-- **mechanical / test reporting:** `gpt-5.6-luna` → `gpt-5.6-terra` low/medium → current main model
-- **broad mapping / triage:** `gpt-5.6-terra` → `gpt-5.6-sol` medium → current main model
-- **normal delegated implementation:** `gpt-5.6-sol` → current main model
-- **hard architecture / root cause / security:** `gpt-6-astra` high/xhigh → `gpt-5.6-sol` high/xhigh → current main model
-- **exceptional max-depth reasoning:** `gpt-6-astra` max → Astra xhigh/high → Sol xhigh/high → current main model
+- **mechanical / test reporting:** Luna → Terra low/medium → Sol low/medium → current main model
+- **broad mapping / triage:** Sol medium → Terra medium → current main model
+- **normal delegated implementation:** Sol → current main model
+- **hard architecture / root cause / security:** Astra high/xhigh → Sol high/xhigh → current main model
+- **exceptional max-depth reasoning:** Astra max → Astra xhigh/high → Sol xhigh/high → current main model
+
+These are candidate preference orders, not permission to repeatedly spawn every entry. Apply the one-refresh/one-fallback budget above.
 
 If multi-agent tools are disabled, skip the chain entirely and continue single-agent with the current model.
 
 Do not silently substitute a weaker model while claiming the stronger model ran. A routing choice counts as executed only when the delegated subagent was actually spawned. When runtime metadata exposes the effective served model/reasoning, record it; when it does not, report the requested route and that model identity remains unverified. Report a fallback when it materially affects confidence or cost.
-
 
 ## Delegation budget
 
@@ -125,3 +146,9 @@ A delegated task should normally contain only:
 5. **Stop condition** — when the subagent should return instead of broadening scope.
 
 Do not send the entire problem statement and repo history to every agent by default.
+
+## Sources
+
+Protocol and model selection verified 2026-10-01. These links are documentation, not a static runtime allowlist:
+- https://developers.openai.com/codex/app-server#list-models-modellist
+- https://developers.openai.com/codex/models

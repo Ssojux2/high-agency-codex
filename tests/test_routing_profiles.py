@@ -24,8 +24,9 @@ class RoutingPolicyTests(unittest.TestCase):
         self.assertIn("Do not summarize first and then independently reconsider routing", text)
         for route in ("DIRECT", "CHEAP DELEGATE", "BROAD MAP", "WORKHORSE", "STRONG REASONING"):
             self.assertIn(route, text)
-        for model in ("gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol", "gpt-6-astra"):
-            self.assertIn(model, text)
+        for family in ("Luna", "Terra", "Sol", "Astra"):
+            self.assertIn(family, text)
+        self.assertIn("current runtime catalog", text)
 
     def test_routing_requires_native_dispatch_matching_preflight(self):
         skill = SKILL.read_text(encoding="utf-8")
@@ -40,20 +41,19 @@ class RoutingPolicyTests(unittest.TestCase):
         self.assertIn("The first `Impact:` line is immutable", text)
         self.assertIn("do not emit a replacement preflight", text)
 
-    def test_openai_model_tiers_are_present(self):
-        text = ROUTING.read_text(encoding="utf-8")
-        for model in (
-            "gpt-6-astra",
-            "gpt-5.6-sol",
-            "gpt-5.6-terra",
-            "gpt-5.6-luna",
-        ):
-            self.assertIn(model, text)
+    def test_openai_model_tiers_come_from_current_catalog(self):
+        for path in (SKILL, ROUTING):
+            text = path.read_text(encoding="utf-8")
+            for family in ("Astra", "Sol", "Terra", "Luna"):
+                self.assertIn(family, text)
+            self.assertNotRegex(text, r"gpt-\d+(?:\.\d+)*-(?:astra|sol|terra|luna)")
+        self.assertIn("model/list", ROUTING.read_text(encoding="utf-8"))
 
     def test_reasoning_tiers_are_present(self):
         text = ROUTING.read_text(encoding="utf-8")
         for effort in ("low", "medium", "high", "xhigh", "max"):
             self.assertRegex(text, rf"\b{re.escape(effort)}\b")
+        self.assertIn("supportedReasoningEfforts", text)
 
     def test_nested_codex_exec_is_discouraged(self):
         text = ROUTING.read_text(encoding="utf-8")

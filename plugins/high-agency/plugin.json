@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "high-agency",
-  "version": "0.10.1",
+  "version": "0.11.0",
   "description": "Lightweight high-agency coding with impact calibration, adaptive model routing, targeted verification, and bounded autonomous iteration for Codex.",
   "license": "MIT",
   "keywords": [
