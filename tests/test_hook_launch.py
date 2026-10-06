@@ -202,7 +202,7 @@ class ConfiguredHookLaunchTests(unittest.TestCase):
                 self.assertEqual(state["session_id"], payload["session_id"])
                 self.assertIn(payload["prompt_id"], state["prompt_ids"])
                 self.assertIn(payload["turn_id"], state["turn_ids"])
-                self.assertEqual(Path(state["cwd"]), Path(os.path.normcase(str(self.repo))))
+                self.assertEqual(Path(state["cwd"]), Path(os.path.normcase(str(self.repo.resolve()))))
                 self.assertTrue(state["baseline_snapshot"]["available"])
 
     def test_configured_stop_launcher_reads_task_state_and_returns_bounded_json(self):
