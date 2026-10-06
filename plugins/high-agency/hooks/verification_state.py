@@ -55,9 +55,10 @@ def active_skill(tool_input) -> bool:
 
 
 def _normal_path(raw: str, cwd: str) -> str:
-    path = raw if os.path.isabs(raw) else os.path.join(cwd, raw)
-    # Preserve the leaf symlink for lstat/readlink fingerprinting.
-    return os.path.normcase(os.path.abspath(path))
+    path = Path(raw if os.path.isabs(raw) else os.path.join(cwd, raw))
+    # Canonicalize ancestor aliases (Windows short names, directory symlinks)
+    # while preserving the leaf symlink for lstat/readlink fingerprinting.
+    return os.path.normcase(os.path.abspath(path.parent.resolve() / path.name))
 
 
 def extract_paths(tool_name: str, tool_input, cwd: str = ".") -> list[str]:
@@ -184,6 +185,7 @@ def _refresh_native(data: dict) -> dict:
     for path, entry in data["native_files"].items():
         if not isinstance(path, str) or not isinstance(entry, dict):
             raise ValueError("Invalid native edit record")
+        path = _normal_path(path, data.get("cwd") or ".")
         fingerprint = _fingerprint(path, deadline=deadline)
         entry["current"] = fingerprint
         if entry.get("before") != fingerprint or not fingerprint_complete(fingerprint):

@@ -51,6 +51,15 @@ class CommandEvidenceTests(unittest.TestCase):
             self.assertEqual(check["argv"], ["npm", "test"])
             self.assertIsNone(classify_command("cd subdir && npm test && echo done", str(cwd)))
 
+    def test_quoted_short_path_is_literal_but_tilde_expansion_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp) / "RUNNER~1"
+            directory.mkdir()
+            check = classify_command("cd " + shlex.quote(str(directory)) + " && " + CHECK, temp)
+            self.assertEqual(check["cwd"], str(directory.resolve()))
+            for target in ("~", "~/project"):
+                self.assertIsNone(classify_command("cd " + target + " && " + CHECK, temp))
+
     def test_claude_synchronous_success_does_not_require_invented_exit_code(self):
         result = result_status({"hook_event_name": "PostToolUse",
                                 "tool_response": {"stdout": "one passed", "stderr": "", "interrupted": False}}, "claude")
@@ -304,7 +313,7 @@ class VerificationLifecycleTests(unittest.TestCase):
         self.hook("PreToolUse", tool_input=explicit, tool_id="with-workdir")
         self.hook("PostToolUse", tool_input=explicit, tool_id="with-workdir", tool_response=response)
         self.assertEqual(self.data()["verification_status"], "passed")
-        self.assertEqual(self.data()["verification_evidence"][-1]["cwd"], str(self.cwd))
+        self.assertEqual(self.data()["verification_evidence"][-1]["cwd"], str(self.cwd.resolve()))
 
     def test_staged_changes_require_diff_scope_that_includes_index(self):
         self.activate()
@@ -336,7 +345,7 @@ class VerificationLifecycleTests(unittest.TestCase):
         self.assertTrue(self.data()["native_dirty"])
         self.assertEqual(self.actual_check().returncode, 0)
         data = self.data()
-        self.assertIn(os.path.normcase(os.path.abspath(path)), data["verification_snapshot"]["native_files"])
+        self.assertIn(os.path.normcase(os.path.abspath(path.parent.resolve() / path.name)), data["verification_snapshot"]["native_files"])
         self.edit_native(path, "value = 1\n", tool_id="revert")
         self.assertFalse(self.data()["native_dirty"])
         self.assertEqual(self.data()["all_edited_files"], [])
@@ -533,6 +542,44 @@ class VerificationLifecycleTests(unittest.TestCase):
 
 
 class StateStoreTests(unittest.TestCase):
+    def test_windows_lock_retries_without_reading_a_locked_byte(self):
+        from types import SimpleNamespace
+        from unittest import mock
+        import state_store
+
+        opened = os.fdopen
+        calls = []
+
+        class UnreadableLock:
+            def __init__(self, handle):
+                self.handle = handle
+
+            def __getattr__(self, name):
+                if name in {"read", "write"}:
+                    raise PermissionError("another process owns this byte range")
+                return getattr(self.handle, name)
+
+        def guarded_fdopen(fd, mode, *args, **kwargs):
+            handle = opened(fd, mode, *args, **kwargs)
+            return UnreadableLock(handle) if mode == "r+b" else handle
+
+        def locking(fd, mode, count):
+            self.assertEqual(os.lseek(fd, 0, os.SEEK_CUR), 0)
+            self.assertEqual(count, 1)
+            calls.append(mode)
+            if len(calls) == 1:
+                raise PermissionError("another process owns this byte range")
+
+        fake_msvcrt = SimpleNamespace(LK_NBLCK=2, LK_UNLCK=0, locking=locking)
+        windows_os = SimpleNamespace(**dict(vars(os), name="nt", fdopen=guarded_fdopen))
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "state.json"
+            with mock.patch.object(state_store, "os", windows_os), mock.patch.dict(sys.modules, {"msvcrt": fake_msvcrt}), mock.patch.object(state_store.time, "sleep"):
+                with state_store.locked_json(path) as data:
+                    data["count"] = 1
+            self.assertEqual(load_json(path), {"count": 1})
+            self.assertEqual(calls, [2, 2, 0])
+
     def test_non_dict_and_malformed_state_are_not_valid_transactions(self):
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / "state.json"

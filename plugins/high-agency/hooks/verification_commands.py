@@ -220,7 +220,9 @@ def command_tokens(command, shell: str = "Bash") -> list[str] | None:
 
 
 def _directory(cwd: Path, target: str, shell: str) -> Path | None:
-    if target == "-" or any(char in target for char in "$~*?[]"):
+    # command_tokens already rejects unquoted tilde expansion. A quoted tilde
+    # is literal, including the RUNNER~1 short names used by native Windows.
+    if target == "-" or any(char in target for char in "$*?[]"):
         return None
     if shell == "PowerShell" and os.name != "nt" and ("\\" in target or re.match(r"^[A-Za-z]:", target)):
         # Do not interpret a Windows path as a relative POSIX filename.

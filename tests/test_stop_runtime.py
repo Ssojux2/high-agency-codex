@@ -407,6 +407,36 @@ class StopRuntimeTests(unittest.TestCase):
         self.assertIn("symlink:", next(iter(current["native_files"].values())))
         self.assertEqual(task_files(data, current, self.repo), ["ignored.py"])
 
+    def test_parent_directory_alias_preserves_relative_leaf_symlink_tracking(self):
+        alias = self.root / "repository alias"
+        first = self.root / "first.py"
+        second = self.root / "second.py"
+        first.write_text("same contents\n", encoding="utf-8")
+        second.write_text("same contents\n", encoding="utf-8")
+        link = self.repo / "ignored.py"
+        try:
+            alias.symlink_to(self.repo, target_is_directory=True)
+            link.symlink_to(first)
+        except (OSError, NotImplementedError) as exc:
+            self.skipTest("Symlink creation unavailable: " + type(exc).__name__)
+        before = file_fingerprint(self.repo, "ignored.py")
+        data = self.active_state()
+        raw = str(alias / "ignored.py")
+        data["native_files"] = {raw: {"before": before, "current": before}}
+        data["all_edited_files"] = [raw]
+        link.unlink()
+        link.symlink_to(second)
+        current = current_snapshot(data, alias)
+        self.assertIn("symlink:", next(iter(current["native_files"].values())))
+        self.assertEqual(rel(raw, alias), "ignored.py")
+        self.assertEqual(task_files(data, current, alias), ["ignored.py"])
+
+        # Canonicalizing the parent must also work after the leaf is deleted.
+        link.unlink()
+        current = current_snapshot(data, alias)
+        self.assertEqual(list(current["native_files"].values()), ["missing"])
+        self.assertEqual(task_files(data, current, alias), ["ignored.py"])
+
     def test_reverting_a_preexisting_dirty_file_remains_a_task_change(self):
         app = self.repo / "src/app.py"
         app.write_text("value = 9\n", encoding="utf-8")

@@ -12,21 +12,25 @@ import tempfile
 from pathlib import Path
 
 
-def native_cli(executable: str) -> Path | None:
+def native_cli(executable: str, *, windows: bool | None = None) -> Path | None:
     located = shutil.which(executable)
     if not located:
         return None
     path = Path(located).resolve()
-    if os.name != "nt" or path.suffix.lower() not in {".cmd", ".bat"}:
+    windows = os.name == "nt" if windows is None else windows
+    if not windows or path.suffix.lower() not in {".cmd", ".bat"}:
         return path
     # Avoid cmd.exe quoting entirely for npm's Windows launcher.
     for node_modules in (path.parent / "node_modules", path.parent.parent):
-        for package in ("codex-win32-x64", "codex-win32-arm64", "codex"):
-            vendor = node_modules / "@openai" / package / "vendor"
-            if vendor.is_dir():
-                matches = list(vendor.rglob("codex.exe"))
-                if len(matches) == 1:
-                    return matches[0]
+        # npm's global installs keep optional platform dependencies inside the
+        # main package. Also retain hoisted and bundled vendor layouts.
+        for dependencies in (node_modules / "@openai/codex/node_modules", node_modules):
+            for package in ("codex-win32-x64", "codex-win32-arm64", "codex"):
+                vendor = dependencies / "@openai" / package / "vendor"
+                if vendor.is_dir():
+                    matches = list(vendor.rglob("codex.exe"))
+                    if len(matches) == 1:
+                        return matches[0]
     return None
 
 

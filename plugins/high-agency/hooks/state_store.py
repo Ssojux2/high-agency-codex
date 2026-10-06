@@ -105,10 +105,9 @@ def locked_json(path: Path, *, recover: bool = False):
         deadline = time.monotonic() + LOCK_TIMEOUT_SECONDS
         if os.name == "nt":
             import msvcrt
-            handle.seek(0)
-            if not handle.read(1):
-                handle.write(b"\0")
-                handle.flush()
+            # Windows permits locking a range beyond EOF. Never read or
+            # initialize byte zero before acquiring it: another process's
+            # byte-range lock denies reads and writes as well as other locks.
             def acquire():
                 handle.seek(0)
                 msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)

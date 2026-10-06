@@ -164,18 +164,23 @@ def rel(raw: str, cwd: Path) -> str:
     path = Path(raw)
     try:
         if path.is_absolute():
-            return native_path(raw, cwd).relative_to(native_path(str(cwd), cwd)).as_posix()
-    except (OSError, ValueError):
+            # The scope root is a directory, so resolve its own alias as well.
+            root = Path(os.path.normcase(str(cwd.resolve())))
+            return native_path(raw, cwd).relative_to(root).as_posix()
+    except (OSError, RuntimeError, ValueError):
         pass
     # lstrip("./") also strips the leading dot from .github and other real names.
     return path.as_posix()
 
 
 def native_path(raw: str, cwd: Path) -> Path:
-    """Normalize Windows drives/case without following a file's symlink."""
+    """Resolve directory aliases without following the native entry's symlink."""
     path = Path(raw)
     if not path.is_absolute():
         path = cwd / path
+    # Windows short temp names and macOS /var aliases must match Git's resolved
+    # root. Resolving the leaf too would fingerprint a symlink's target instead.
+    path = path.parent.resolve() / path.name
     return Path(os.path.normcase(os.path.abspath(path)))
 
 
