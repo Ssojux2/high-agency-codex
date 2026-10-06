@@ -213,7 +213,7 @@ def read_live(command: list[str] | str, timeout: float = 8.0,
             return result
 
     try:
-        request("initialize", 1, {"clientInfo": {"name": "high_agency_model_catalog", "title": "High Agency Model Catalog", "version": "0.12.0"}})
+        request("initialize", 1, {"clientInfo": {"name": "high_agency_model_catalog", "title": "High Agency Model Catalog", "version": "0.12.1"}})
         send({"method": "initialized", "params": {}})
         models, seen = [], set()
         cursor = None

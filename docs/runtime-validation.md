@@ -57,6 +57,14 @@ model-routing reference for the supported invocation.
 
 ## Hook contracts
 
+Release 0.12.1 fixes a transcript parsing timeout shared with the Claude port.
+The Impact pattern now limits whitespace to the current line instead of
+repeatedly scanning across newlines. A genuine hook subprocess regression covers
+100,000 blank lines, a 2.58 MB mixed-whitespace response, and a later valid Impact
+estimate under a three-second process timeout. This runs in the native OS matrix.
+Codex continues to use its supported `decision: "block"` Stop output; Claude's
+`hookSpecificOutput.additionalContext` response is specific to that host.
+
 The [official hooks reference](https://developers.openai.com/codex/hooks) documents
 the canonical `Bash` name for shell/exec tools and `apply_patch` for patch edits.
 Other local function tools also use the hook path; `spawn_agent` additionally

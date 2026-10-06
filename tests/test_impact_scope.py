@@ -37,6 +37,18 @@ class ImpactScopeTests(unittest.TestCase):
         self.assertEqual(estimate["files_max"], 999)
         self.assertEqual(estimate["modules_max"], 1)
 
+    def test_horizontal_whitespace_unicode_comparison_and_crlf_remain_supported(self):
+        estimate = parse_impact(
+            "Preflight: inspect the change\r\n"
+            "\tImpact:\tpropagating | files ≤ 4\t| modules <= 2 | boundary = shared-api\t\r\n"
+            "Next step: inspect the affected modules.\r\n"
+        )
+        self.assertIsNotNone(estimate)
+        self.assertEqual(estimate["tier"], "propagating")
+        self.assertEqual(estimate["files_max"], 4)
+        self.assertEqual(estimate["modules_max"], 2)
+        self.assertEqual(estimate["boundary"], "shared-api")
+
     def test_first_estimate_is_immutable_baseline(self):
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / "transcript.jsonl"

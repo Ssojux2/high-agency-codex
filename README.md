@@ -2,7 +2,7 @@
 
 High Agency is a lightweight coding scaffold designed to use the LLM's own capability first, then spend extra process, stronger models, or deeper reasoning only where they materially improve correctness.
 
-Current version: **0.12.0**
+Current version: **0.12.1**
 
 ## Prerequisites
 
@@ -22,6 +22,8 @@ codex plugin marketplace add Ssojux2/high-agency-codex
 ```
 
 Then open `/plugins`, install **high-agency**, and review/trust the bundled hooks.
+
+**0.12.1 hook fix:** Impact parsing stays within individual lines. This fixes a reproducible 12-second hook timeout on whitespace-heavy assistant responses while preserving the first valid estimate. Native Windows, Linux, and macOS run the regression coverage. Codex keeps its own supported Stop decision format.
 
 > **v0.12.0 routing audit:** catalog query success, freshness, account entitlement, and native dispatch are now separate evidence checks. Read-only routing observations report only the metadata the host exposes. Validation combines regression fixtures with real Codex local plugin installation and model-catalog queries on Windows, Linux, and macOS CI. Authenticated end-to-end routing still needs user-run evaluation.
 

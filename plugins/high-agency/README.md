@@ -1,6 +1,8 @@
 # high-agency
 
-Version: **0.12.0**
+Version: **0.12.1**
+
+This patch fixes a hook timeout while parsing assistant responses with many blank lines. The Impact estimate remains a single immutable line; CRLF and horizontal whitespace are supported. Codex keeps its native Stop decision format.
 
 ## Prerequisites
 

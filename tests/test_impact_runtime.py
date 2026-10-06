@@ -55,11 +55,11 @@ class ImpactRuntimeTests(unittest.TestCase):
             ["git", *args], cwd=self.root, text=True, capture_output=True, check=True
         )
 
-    def run_hook(self, script, **payload):
+    def run_hook(self, script, *, timeout=10, **payload):
         result = subprocess.run(
             [sys.executable, str(script)], input=json.dumps({**self.common, **payload}),
             text=True, capture_output=True, cwd=self.root, env=self.env,
-            timeout=10, check=False,
+            timeout=timeout, check=False,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stderr, "")
@@ -106,6 +106,30 @@ class ImpactRuntimeTests(unittest.TestCase):
     def edit_both_areas(self):
         for path in ("src/auth/a.py", "src/payments/b.py"):
             (self.root / path).write_text("value = 2\n", encoding="utf-8")
+
+    def test_whitespace_heavy_transcript_keeps_real_hook_within_time_budget(self):
+        self.submit()
+        # These valid assistant records previously made the multiline Impact
+        # regex rescan whitespace from each newline, exceeding the 12s hook
+        # timeout while retaining the session lock. Use real child processes
+        # with a generous 3s ceiling so a regression cannot stall the suite.
+        for index, text in enumerate(("\n" * 100000, (" \t" * 64 + "\n") * 20000)):
+            with self.subTest(record=index):
+                self.append(text)
+                self.run_hook(
+                    VERIFY, timeout=3, hook_event_name="PreToolUse",
+                    tool_name="Bash", tool_use_id=f"whitespace-{index}",
+                    tool_input={"command": "echo inspect"},
+                )
+                self.assertIsNone(self.read_state()["impact_estimate"])
+        original = "Impact: local | files<=1 | modules<=1 | boundary=private"
+        self.append(original)
+        self.run_hook(
+            VERIFY, timeout=3, hook_event_name="PreToolUse",
+            tool_name="Bash", tool_use_id="estimate-after-whitespace",
+            tool_input={"command": "echo inspect"},
+        )
+        self.assertEqual(self.read_state()["impact_estimate"]["raw"], original)
 
     def test_major_scope_drift_blocks_once_after_real_paired_success_metadata(self):
         self.submit()

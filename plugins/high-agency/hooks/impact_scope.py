@@ -11,11 +11,14 @@ from pathlib import Path
 MAX_TRANSCRIPT_BYTES = 8 * 1024 * 1024
 GENERIC_ROOTS = {"src", "lib", "app", "apps", "packages", "services", "crates", "modules", "pkg"}
 
+# An estimate occupies one line. In MULTILINE mode, leading \s* can span
+# newlines and rescan a blank transcript from every line start (quadratic time).
+# Keep spacing horizontal; accept CRLF explicitly at the end of the line.
 IMPACT_RE = re.compile(
-    r"^\s*Impact:\s*(local|propagating|high)\s*\|\s*"
-    r"files\s*(?:<=|≤)\s*(\d+)\s*\|\s*"
-    r"modules\s*(?:<=|≤)\s*(\d+)\s*\|\s*"
-    r"boundary\s*=\s*(private|shared-api|high-impact)\s*$",
+    r"^[^\S\r\n]*Impact:[^\S\r\n]*(local|propagating|high)[^\S\r\n]*\|[^\S\r\n]*"
+    r"files[^\S\r\n]*(?:<=|≤)[^\S\r\n]*(\d+)[^\S\r\n]*\|[^\S\r\n]*"
+    r"modules[^\S\r\n]*(?:<=|≤)[^\S\r\n]*(\d+)[^\S\r\n]*\|[^\S\r\n]*"
+    r"boundary[^\S\r\n]*=[^\S\r\n]*(private|shared-api|high-impact)[^\S\r\n]*\r?$",
     re.IGNORECASE | re.MULTILINE,
 )
 
