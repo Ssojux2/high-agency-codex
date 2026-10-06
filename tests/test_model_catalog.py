@@ -1,11 +1,13 @@
 import importlib.util
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import time
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / 'plugins/high-agency/scripts/model_catalog.py'
@@ -66,6 +68,8 @@ class ResolverTests(unittest.TestCase):
         route = catalog.resolve([item])['STRONG REASONING']
         self.assertEqual(route['reasoning_effort'], 'medium')
         self.assertIn(route['reasoning_effort'], route['supported_reasoning_efforts'])
+        self.assertEqual(route['requested_effort'], 'high')
+        self.assertEqual(route['effort_status'], 'supported_fallback')
         self.assertIsNone(catalog.supported_effort({'model': 'gpt-6-sol'}, 'max'))
 
     def test_advertised_default_is_used_when_lower_missing(self):
@@ -100,6 +104,7 @@ for line in sys.stdin:
         continue
     if method == 'initialize':
         assert request['id'] == 1
+        assert set(request['params']['clientInfo']) == {'name', 'title', 'version'}
         result = {}
     else:
         assert request['params']['includeHidden'] is False
@@ -144,6 +149,41 @@ print(json.dumps({'id': r['id'], 'error': {'message': 'sensitive configuration'}
         with self.assertRaises(ValueError):
             self.fake('pass')
 
+    def test_native_launcher_uses_an_argument_list(self):
+        with mock.patch.object(catalog.shutil, 'which', return_value='/a path/codex'):
+            command, env = catalog.cli_command('codex', windows=False)
+        self.assertEqual(command, ['/a path/codex', 'app-server'])
+        self.assertIsNone(env)
+
+    def test_windows_shim_path_is_not_interpolated_into_cmd_syntax(self):
+        shim = r'C:\A&B %PATH%!\codex.cmd'
+        with mock.patch.object(catalog.shutil, 'which', side_effect=[shim, r'C:\Windows\System32\cmd.exe']):
+            command, env = catalog.cli_command('codex', windows=True)
+        self.assertNotIn(shim, command)
+        self.assertIn('/d /v:off /s /c', command)
+        self.assertIn('%HIGH_AGENCY_CODEX_APP_SERVER_BIN%', command)
+        self.assertEqual(env['HIGH_AGENCY_CODEX_APP_SERVER_BIN'], shim)
+
+    @unittest.skipUnless(os.name == 'nt', 'requires the native Windows command processor')
+    def test_windows_cmd_shim_protocol_in_special_character_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory) / 'catalog & %PATH%!'
+            folder.mkdir()
+            server = folder / 'server.py'
+            server.write_text('''import json, sys
+for line in sys.stdin:
+    r=json.loads(line)
+    if r['method']=='initialized':
+        continue
+    data={} if r['method']=='initialize' else {'data':[{'model':'gpt-6.1-sol'}],'nextCursor':None}
+    print(json.dumps({'id':r['id'],'result':data}),flush=True)
+''', encoding='utf-8')
+            shim = folder / 'codex.cmd'
+            shim.write_text('@"' + sys.executable + '" -u "%~dp0server.py" %*\n', encoding='utf-8')
+            command, env = catalog.cli_command(str(shim))
+            models = catalog.read_live(command, 5, env)
+            self.assertEqual(models, [{'model': 'gpt-6.1-sol'}])
+
 
 class CommandTests(unittest.TestCase):
     def run_cli(self, payload, *args):
@@ -156,6 +196,37 @@ class CommandTests(unittest.TestCase):
         data = json.loads(proc.stdout)
         self.assertIn('not independently verified', data['freshness'])
         self.assertEqual(data['routes']['WORKHORSE']['model'], 'gpt-6.1-sol')
+        self.assertEqual(data['query_status'], 'succeeded')
+        self.assertEqual(data['freshness_status'], 'unverified')
+        self.assertEqual(data['entitlement_status'], 'unverified')
+        self.assertEqual(data['dispatch_status'], 'not_observed')
+
+    def test_empty_and_unknown_catalogs_report_fallback_explicitly(self):
+        for items in ([], [model('unknown-provider-family')]):
+            with self.subTest(items=items):
+                proc = self.run_cli({'data': items, 'nextCursor': None})
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+                data = json.loads(proc.stdout)
+                self.assertEqual(data['query_status'], 'succeeded')
+                self.assertEqual(data['selection_status'], 'fallback')
+                self.assertEqual(data['freshness_status'], 'unverified')
+                self.assertIn('No supported family', data['warning'])
+
+    def test_runtime_catalog_query_is_not_a_freshness_or_access_check(self):
+        data = catalog.report([model('gpt-6.1-sol')], 'codex app-server model/list')
+        self.assertEqual(data['query_status'], 'succeeded')
+        self.assertEqual(data['selection_status'], 'resolved')
+        self.assertEqual(data['freshness_status'], 'unverified')
+        self.assertIn('cached or bundled', data['freshness'])
+        self.assertEqual(data['entitlement_status'], 'unverified')
+        self.assertEqual(data['dispatch_status'], 'not_observed')
+
+    def test_partial_family_selection_preserves_per_role_fallback(self):
+        data = catalog.report([model('gpt-6-luna')], 'supplied model/list')
+        self.assertEqual(data['selection_status'], 'partial')
+        self.assertIsNotNone(data['routes']['CHEAP DELEGATE']['model'])
+        self.assertIsNone(data['routes']['WORKHORSE']['model'])
+        self.assertIn('Some roles', data['warning'])
 
     def test_rpc_envelope_and_exclusion(self):
         proc = self.run_cli({'result': {'data': [model('gpt-6.1-sol'), model('gpt-6-sol')]}},
@@ -165,7 +236,10 @@ class CommandTests(unittest.TestCase):
     def test_incomplete_catalog_fails_closed(self):
         proc = self.run_cli({'data': [model('gpt-6-sol')], 'nextCursor': 'more'})
         self.assertEqual(proc.returncode, 2)
-        self.assertIsNone(json.loads(proc.stdout)['routes']['WORKHORSE']['model'])
+        data = json.loads(proc.stdout)
+        self.assertIsNone(data['routes']['WORKHORSE']['model'])
+        self.assertEqual(data['query_status'], 'failed')
+        self.assertEqual(data['selection_status'], 'fallback')
 
     def test_missing_binary_gives_safe_fallback(self):
         proc = subprocess.run([sys.executable, str(SCRIPT), '--codex-bin', '/no-such-codex-binary'],

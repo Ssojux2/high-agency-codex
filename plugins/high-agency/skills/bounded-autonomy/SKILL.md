@@ -9,6 +9,8 @@ Continue useful work without turning the task into an unbounded loop.
 
 Use this skill only when the user explicitly asks for autonomous iteration or clearly asks to keep going until a condition is met.
 
+Before the first mutating pass, run `python3 "<installed-plugin-root>/hooks/verification_state.py" --activate` through the host shell on Linux/macOS; use `python` on native Windows. Require Python 3.10+ and resolve this skill's actual installed root. The PreToolUse hook supplies session identity; preserve an already active task. If hooks are unavailable, use manual verification and report the continuation guard as UNVERIFIED. Do not install an interpreter or change global settings automatically.
+
 For each pass:
 
 1. pick the highest-value unresolved acceptance criterion;

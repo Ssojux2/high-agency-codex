@@ -2,6 +2,15 @@
 
 Load this reference only when delegation is justified by the parent skill.
 
+## Contents
+
+- [Catalog](#current-model-catalog--resolve-before-routing)
+- [Runtime evidence](#runtime-evidence)
+- [Routes](#routing-table)
+- [Stage guidance](#stage-guidance)
+- [Fallbacks](#explicit-fallback-chains)
+- [Delegation budget](#delegation-budget)
+
 ## Principle
 
 Use the **cheapest/fastest configuration that can reliably do the subtask**, while keeping the strongest reasoning at high-leverage decision points.
@@ -25,14 +34,20 @@ Use the current account/provider/client model list, not a hard-coded release tab
    python3 "<installed-plugin-root>/scripts/model_catalog.py"
    ```
 
-   Resolve the installed plugin root from this skill's actual path, not the project working directory. The helper only sends `initialize`, `initialized`, and `model/list` to `codex app-server`; it does not start a thread/turn, launch `codex exec`, read credentials directly, install an SDK, or edit configuration. If CLI overrides differ from the active session, use the host's catalog instead.
+   Use `python` on native Windows and Python 3.10+ on all platforms. Resolve the installed plugin root from this skill's actual path, not the project working directory. The helper only sends `initialize`, `initialized`, and `model/list` to `codex app-server`; it does not start a thread/turn, launch `codex exec`, read credentials directly, install an SDK, or edit configuration. If CLI overrides differ from the active session, use the host's catalog instead.
 3. To resolve a complete catalog already supplied by the host, pass its JSON result via `--catalog <file>` or `--catalog -` on stdin. This must be current data from the active account/provider; a saved file is not automatically fresh. Incomplete pagination is rejected.
 4. Select the latest available stable numeric version **within the required family**. Compare version components numerically, not alphabetically. Exclude hidden/disabled/unavailable entries. Never fabricate a newer ID, assume a preview is stable, or use a model merely because a public announcement mentions it.
 5. Use only `supportedReasoningEfforts` returned for the selected model. When the desired level is missing, use an advertised lower/default level; omit the override if no supported level is known. Never assume `max` is universal.
 6. Resolve once per task before the first delegation. Reuse that result only while account, provider, profile, client and model availability are unchanged. Refresh after a model rejection; do not retry the same rejected ID or loop indefinitely. Use at most one refreshed fallback attempt, then the current main model.
 7. Missing executable, timeout, malformed/empty catalog, unknown families, or disabled native delegation: keep the current main model and report latest availability unverified. Do not resurrect an old bundled model list. The helper exits 2 on lookup failure with safe fallback JSON.
 
-Record catalog source, lookup time, requested model/effort, fallback, and the effective served model when exposed. Catalog lookup proves a selection source, not that an inference ran. Respect explicit user/admin pins; disclose conflicts rather than rewriting global configuration.
+Record catalog source, lookup time, requested model/effort, fallback, and the effective served model when exposed. Keep `query_status`, `freshness_status`, `entitlement_status`, `dispatch_status`, and `selection_status` separate. An app-server response can be a cached/bundled catalog; a new query timestamp does not establish freshness, account entitlement, or a completed inference. Empty/unknown catalogs explicitly select current-main fallback. Respect explicit user/admin pins; disclose conflicts rather than rewriting global configuration.
+
+## Runtime evidence
+
+The bundled `hooks/routing_observer.py` observes native `Agent`/`spawn_agent` PostToolUse requested model/effort and exposed child identity. Read a known session with `--report --session-id <current-session-id>`. Without a host-supplied ID, `--report` reports capabilities and leaves current-session observations unverified. Do not choose another recent session automatically.
+
+The current Codex adapter marks child `resolvedModel`/`modelsUsed` and actual served-effort metadata as **unsupported**. The common hook `model` is the parent model and cannot identify the child. Request observation and launch metadata remain useful without proving completion or serving identity. The helper never starts agents or performs model discovery; use `high-agency-doctor` to inspect these limits and known state-location access.
 
 ## Routing table
 
@@ -149,6 +164,8 @@ Do not send the entire problem statement and repo history to every agent by defa
 
 ## Sources
 
-Protocol and model selection verified 2026-10-01. These links are documentation, not a static runtime allowlist:
+Contracts reviewed 2026-10-06. These links and offline fixture tests are not a static allowlist or proof of a completed native session:
 - https://developers.openai.com/codex/app-server#list-models-modellist
 - https://developers.openai.com/codex/models
+- https://developers.openai.com/codex/hooks
+- https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference

@@ -34,6 +34,12 @@ For a local reversible change:
 
 For uncertain or multi-step work, keep a short working plan in context. Ask the user only when materially different interpretations affect outcomes, side effects, or irreversible choices.
 
+## Activate verification
+
+Before the first project mutation, run `python3 "<installed-plugin-root>/hooks/verification_state.py" --activate` through the host shell on Linux/macOS; use `python` on native Windows. Resolve the root from this skill's installed location and require Python 3.10+. An activated virtual environment is sufficient; do not install an interpreter or change global settings automatically.
+
+The trusted PreToolUse hook binds activation to the actual session payload and captures the baseline; an already active task is preserved. No session-ID environment guess is needed. The command's output alone does not prove hook activation. If hooks are disabled/untrusted, continue with manual verification and report the guard as UNVERIFIED.
+
 ## Unified preflight
 
 After enough read-only inspection to understand the likely task shape, but **before the first code/config mutation**, write exactly one compact five-line preflight block:
@@ -61,6 +67,8 @@ Use this mapping:
 If `Route` is anything other than **DIRECT**, read `references/model-routing.md` and spawn the selected native Codex subagent before performing the delegated cognitive work. When the runtime supports per-spawn model/reasoning fields, the actual spawn request must match the preflight `Model:` line, using the exact catalog model ID rather than a family label.
 
 Merely saying that Astra/Sol/Terra/Luna should be used is not execution. If explicit per-spawn model selection is unavailable, record the supported fallback/default route and do not claim the requested model ran. If the catalog cannot be obtained, keep the current main model, mark latest availability unverified, and do not guess a versioned model ID.
+
+Separate catalog query success, freshness, entitlement, and dispatch. An app-server catalog can be cached/bundled. The native observer records requested model/effort and dispatch metadata, but this adapter cannot verify the child's served model or effort from the common parent `model` field.
 
 The preflight selects the **primary cognitive bottleneck**. Add another delegated model later only when new evidence creates a distinct need; do not fan out just because multiple models exist.
 

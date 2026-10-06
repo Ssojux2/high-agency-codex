@@ -2,7 +2,18 @@
 
 High Agency is a lightweight coding scaffold designed to use the LLM's own capability first, then spend extra process, stronger models, or deeper reasoning only where they materially improve correctness.
 
-Current version: **0.10.1**
+Current version: **0.12.0**
+
+## Prerequisites
+
+**Python 3.10+ must be available on the PATH inherited by Codex.**
+
+| Platform | Required interpreter / hook launcher |
+|---|---|
+| Linux and macOS (POSIX) | `python3` |
+| Native Windows | `python`, selected by the hook's `commandWindows` entry |
+
+An activated virtual environment is acceptable if Codex inherits its PATH. Native Windows requires a host that honors `commandWindows`; a POSIX or WSL run does not validate the native Windows launcher. The plugin does not install Python or edit global PATH/configuration. CI runs native Windows, Linux, and macOS regression suites and real Codex local-installation and model-catalog checks. Authenticated task execution remains a separate acceptance check.
 
 ## Install
 
@@ -12,7 +23,7 @@ codex plugin marketplace add Ssojux2/high-agency-codex
 
 Then open `/plugins`, install **high-agency**, and review/trust the bundled hooks.
 
-> **v0.8.1 hook reliability:** Codex hooks now fail open by default. Unexpected hook-state or environment errors no longer interrupt the coding session; set `HIGH_AGENCY_HOOK_DEBUG=1` only when you intentionally want hook tracebacks. Runtime regression tests now exercise real `UserPromptSubmit`, `PostToolUse:Bash`, and `Stop` payloads.
+> **v0.12.0 routing audit:** catalog query success, freshness, account entitlement, and native dispatch are now separate evidence checks. Read-only routing observations report only the metadata the host exposes. Validation combines regression fixtures with real Codex local plugin installation and model-catalog queries on Windows, Linux, and macOS CI. Authenticated end-to-end routing still needs user-run evaluation.
 
 ## Core behavior
 
@@ -32,19 +43,21 @@ It does **not** require planning documents, TDD, worktrees, subagents, broad tes
 
 Multi-model work is optional and only activates when delegation has real leverage: independent workstreams, large read-only exploration, high-impact architecture/security, repeated hard failures, or cheap bounded mechanical work.
 
-When native Codex multi-agent tools are available, High Agency asks for an explicit model and reasoning effort per delegated subtask:
+When native Codex multi-agent tools are available, High Agency asks for an explicit model and supported reasoning effort per delegated subtask. Resolve exact model IDs from the active host's complete, current catalog for the same account, provider, and configuration. Family names below are policy preferences; they are not fixed release IDs.
 
-| Work | Preferred route |
+| Work | Preferred family and desired effort |
 |---|---|
-| mechanical search / simple command execution / test reporting | **GPT-5.6 Luna**, low–medium |
-| large repo mapping / dependency tracing / docs lookup / first-pass triage | **GPT-5.6 Terra**, medium |
-| normal delegated implementation / integration / focused debugging | **GPT-5.6 Sol**, medium–high |
-| difficult architecture / cross-system reasoning / high-impact security / hard root cause | **GPT-6 Astra**, high–xhigh |
-| exceptional unresolved reasoning | **GPT-6 Astra**, max, rarely |
+| mechanical search / simple command execution / test reporting | latest available **Luna**, low–medium |
+| large repo mapping / dependency tracing / docs lookup / first-pass triage | latest available **Sol**, medium; Terra if Sol is unavailable |
+| normal delegated implementation / integration / focused debugging | latest available **Sol**, medium–high |
+| difficult architecture / cross-system reasoning / high-impact security / hard root cause | latest available **Astra**, high–xhigh |
+| exceptional unresolved reasoning | latest available **Astra**, max only if supported, rarely |
+
+Use only effort levels supported by the selected model and host. If a desired effort is unavailable, choose a supported substitute or keep the current model and record the fallback. A catalog query succeeding does not, by itself, prove freshness, account entitlement, or that inference ran.
 
 The main thread remains the integrator.
 
-**Important:** the skill does not silently change the primary session's `/model`. It uses the current main model directly when that is efficient and routes only bounded subproblems to other models. If native subagents or a requested model are unavailable, it stays single-agent or uses the nearest available tier.
+**Important:** the primary session model stays unchanged. Routing is optional guidance for bounded native subtasks; plugin code does not force dispatch or launch agents. The skill uses the current main model directly when that is efficient. If native subagents or a requested model are unavailable, it stays single-agent or follows the supported fallback chain. Explicit user/admin model pins remain in place.
 
 Before the first code/config mutation, High Agency now emits one unified preflight from the same read-only inspection:
 
@@ -60,11 +73,11 @@ The summary, complexity, route, model, and impact estimate are one decision. For
 
 A routing choice counts as executed only when a native Codex subagent is actually spawned. When supported, the spawn should carry the intended model and reasoning effort explicitly. Merely recommending Astra/Sol/Terra/Luna in prose is not considered successful routing. If the runtime cannot select a model per spawn, High Agency reports the effective fallback/default route instead of pretending the requested model ran.
 
-Explicit fallback chains keep work moving when a preferred delegated model is unavailable: Luna→Terra→main for mechanical work, Terra→Sol→main for mapping, Sol→main for implementation, and Astra→Sol→main for hard reasoning.
+Explicit fallback chains use the latest available version within each family: **Luna → Terra → Sol → current main model** for mechanical work, **Sol → Terra → current main model** for BROAD MAP, **Sol → current main model** for WORKHORSE implementation, and **Astra → Sol → current main model** for hard reasoning. These are candidate preferences, not a request to try every model. After a rejection, refresh at most once and attempt one supported fallback before continuing on the current main model.
 
 ## Reasoning policy
 
-Reasoning effort is treated as a budget:
+Reasoning effort is treated as a budget, constrained by the selected model's advertised capabilities:
 
 - low — deterministic/mechanical;
 - medium — normal bounded reasoning;
@@ -88,10 +101,36 @@ Important diagnostics:
 
 - `agents.enabled = false` → adaptive routing is disabled; High Agency stays single-agent.
 - `allow_managed_hooks_only = true` → bundled plugin hooks may be skipped unless deployed as managed hooks.
-- account/provider model availability is reported as **UNVERIFIED** unless the user explicitly requests a bounded model probe.
+- catalog query success, freshness, account entitlement/availability, and dispatch success are reported separately; static configuration or a parsed catalog cannot establish all four.
+- use the active host's model catalog. The bundled `scripts/model_catalog.py` helper is a metadata query only, and its local account/provider/profile/configuration must match the session before its result is used for routing.
+- missing availability evidence is **UNVERIFIED**. A lookup failure is not proof that the account lacks access.
 - session CLI overrides may differ from config; use `/status` for the live session view.
 
-Doctor never probes every model by default.
+Doctor does not run paid model probes automatically, install an SDK, or start nested CLI inference sessions. A bounded native model probe requires an explicit user request.
+
+## Read-only routing observations
+
+From the plugin root (`plugins/high-agency/` in a checkout), select the current host session explicitly. Replace the placeholder with the session ID supplied by the host.
+
+Linux/macOS:
+
+```sh
+python3 hooks/routing_observer.py --report --session-id "<current-session-id>"
+```
+
+Native Windows:
+
+```powershell
+python hooks/routing_observer.py --report --session-id "<current-session-id>"
+```
+
+`--report` alone shows capabilities with observations **UNVERIFIED**; it does not read a current or latest session automatically. Add `--agent-id "<current-agent-id>"` when inspecting a child agent's scope. If the report process does not have Codex's `PLUGIN_DATA`, add `--state-dir "<routing-directory>"` only when the host supplies that routing-state directory. If its location is unknown, state access remains **UNVERIFIED**; do not guess a directory or choose another session.
+
+The scoped report separates observer capability from requested-model, resolved-model, and `modelsUsed` statuses. A request is evidence of intent; only explicit host model metadata can support a claim about the resolved or served model. Missing model metadata remains **UNVERIFIED**.
+
+Codex supports request/dispatch observations through native `PostToolUse` events for `spawn_agent|Agent`. A canonical child `resolvedModel`/`modelsUsed` schema is not available for these hook events, so the **served-model metadata capability is unsupported** and served identity remains **UNVERIFIED**. Keep that limitation separate from supported request/dispatch observations. An empty report does not prove that no subagent ran; assess any other host-provided dispatch evidence separately.
+
+Observation state is kept per session under the plugin state directory. It retains bounded routing metadata without copying prompts, tool output, or credentials. The observer reports evidence; it does not change the main model, dispatch agents, or enforce a routing choice.
 
 ## Impact calibration
 
@@ -169,7 +208,7 @@ current model → edit → targeted verification → finish
 A hard multi-system problem may look like:
 
 ```text
-Terra map ─┐
+Sol map ───┐
            ├→ main integrator / Sol implementation
 Astra plan ┘
                     ↓
@@ -375,7 +414,7 @@ The important questions are not hard-coded into a fixed workflow:
 - Should reasoning/model quality escalate?
 - Is another continuation likely to produce new evidence?
 
-That is why the current roadmap is evaluation-first. Structural overhead is already lower than the measured Superpowers paths, but no claim is made that High Agency has a higher task-success rate until equal-model/equal-budget end-to-end benchmarks are run.
+That is why the current roadmap is evaluation-first. Existing structural measurements describe prescribed process footprint. They do not establish a higher end-to-end task-success rate, token or latency savings, or a benefit caused by the 0.12.0 routing changes. Those outcomes need equal-model/equal-budget end-to-end benchmarks.
 
 ### Practical fit
 
@@ -398,9 +437,13 @@ End-to-end success claims are intentionally not published without equal-model/eq
 
 ## Development status
 
-**v0.10.1 is the current evaluation baseline.**
+**v0.12.0 is the current evaluation baseline.**
 
-v0.10.1 unifies task summary, complexity, route, model choice, and impact calibration into one pre-mutation decision. Routing evals also require the actual native spawn request to correspond to that preflight decision when the runtime exposes per-spawn model controls.
+This audit release updates family routing, separates catalog lookup from freshness, entitlement, and dispatch evidence, and adds read-only routing observations. The main model remains the integrator, and delegation stays an optional native subtask decision.
+
+**Codex 0.160.1 limitation:** native `exec_command` hooks receive raw output without the exit status and effective working directory needed to certify a successful check. Those results remain **UNVERIFIED**; a printed success message never upgrades them. The main agent still inspects its real tool results, and Stop uses bounded reminders. See [execution-result limitations](docs/runtime-validation.md#codex-01601-execution-result-limitation).
+
+Validation combines regression fixtures with real Codex local plugin installation and model-catalog queries on Windows, Linux, and macOS CI. Actual CLI end-to-end dispatch, served-model identity where exposed, fallback behavior, and efficiency still require explicit user-run evaluation. See [routing scenarios](evals/routing-scenarios.md) and [runtime validation](docs/runtime-validation.md) for the evidence to capture; these changes do not establish token, latency, or cost savings.
 
 Further runtime features, routing rules, thresholds, or orchestration complexity should not be added based on intuition alone. The next behavioral changes should be driven by real end-to-end Codex/Claude Code runs using the existing `evals/` scenarios and comparable model/budget settings, including impact-estimate calibration.
 

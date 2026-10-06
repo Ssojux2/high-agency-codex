@@ -37,6 +37,15 @@ class CodexDoctorContractTests(unittest.TestCase):
         self.assertIn("metadata query, not an inference/model probe", text)
         self.assertIn("failed lookup is **UNVERIFIED**", text)
 
+    def test_doctor_separates_catalog_and_dispatch_evidence(self):
+        text = DOCTOR.read_text(encoding="utf-8")
+        for field in ("query_status", "freshness_status", "entitlement_status", "dispatch_status", "selection_status"):
+            self.assertIn(field, text)
+        self.assertIn("routing_observer.py --report --session-id", text)
+        self.assertIn("common hook `model` describes the parent", text)
+        self.assertIn("unsupported", text)
+        self.assertIn("Python 3.10+", text)
+
 
 if __name__ == "__main__":
     unittest.main()

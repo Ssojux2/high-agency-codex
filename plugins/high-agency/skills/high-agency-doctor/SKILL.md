@@ -14,14 +14,14 @@ Do not edit project files. Do not run model probes unless the user explicitly as
 Run these cheap read-only checks:
 
 1. `codex --version`
-2. `python3 --version`
+2. `python3 --version` on Linux/macOS; `python --version` on native Windows. Require Python 3.10+. An activated virtual environment can supply the interpreter; do not install it or edit global aliases/settings automatically.
 3. `git --version`
 4. Inspect only safe High Agency-relevant Codex configuration values from:
    - `$CODEX_HOME/config.toml` when `CODEX_HOME` is set;
    - otherwise `~/.codex/config.toml`;
    - trusted project `.codex/config.toml` when present.
 
-Use Python `tomllib` or equivalent. Do **not** print the full config file.
+Use Python `tomllib` where available, an existing trusted parser, or a supported host config-read capability. Python 3.10 lacks `tomllib`; if no safe parser is available, report parsing unverified instead of installing one for this check. Do **not** print the full config file.
 
 Report only:
 - `model`
@@ -37,11 +37,19 @@ Also remind the user that session/CLI overrides may differ; `/status` is the aut
 
 ## Current model catalog
 
-Read `../high-agency-coding/references/model-routing.md`. Prefer the active host's complete `model/list` response. In a matching local account/provider/profile, run `python3 "<installed-plugin-root>/scripts/model_catalog.py"` to inspect available role models and supported reasoning efforts. Resolve the script from the installed skill path, not the project working directory.
+Read `../high-agency-coding/references/model-routing.md`. Prefer the active host's complete `model/list` response. In a matching local account/provider/profile, run `python3 "<installed-plugin-root>/scripts/model_catalog.py"` on Linux/macOS, or `python "<installed-plugin-root>/scripts/model_catalog.py"` on native Windows, to inspect available role models and supported reasoning efforts. Resolve the script from the installed skill path, not the project working directory.
 
 This is a metadata query, not an inference/model probe. It sends no prompt and starts no thread or turn. Do not install another SDK or read credentials. Skip the CLI helper when its configuration differs from the active host; use the host catalog instead. A saved JSON catalog must have current provenance.
 
-Report catalog source, lookup time, selected IDs, supported efforts, fallback, and whether latest availability could be checked. A failed lookup is **UNVERIFIED**, not proof the account lacks access. A catalog entry does not prove that a subagent actually ran. Do not change user/admin pins or global configuration to make a model appear available.
+Report `query_status`, `freshness_status`, `entitlement_status`, `dispatch_status`, and `selection_status` separately with source, lookup time, requested/selected IDs, supported efforts, and fallback. An app-server query can return a cached/bundled catalog; its timestamp does not establish freshness or entitlement. A failed lookup is **UNVERIFIED**, not proof the account lacks access. An empty/unknown catalog explicitly keeps the current main model. Do not change user/admin pins or global configuration to make a model appear available.
+
+## Recorded routing evidence
+
+Run the installed `hooks/routing_observer.py --report --session-id <current-session-id>` with the platform's interpreter above. Use only a session ID supplied by the active host. With no reliable ID, use `--report` alone and leave current-session observations UNVERIFIED. Never select another recent session automatically.
+
+The observer records native `Agent`/`spawn_agent` PostToolUse requested model/effort and exposed child identity. The current Codex adapter has **unsupported** child `resolvedModel`/`modelsUsed` and served-effort metadata capabilities. The common hook `model` describes the parent, so it is never substituted as the child's model. A launch does not prove completion, and request evidence does not prove serving identity.
+
+If `PLUGIN_DATA` is unavailable, pass `--state-dir` only with the routing-state directory explicitly supplied by the host; otherwise report state access UNVERIFIED. The report is read-only. `capabilities` describes the documented contract, not a live host probe. The helper neither dispatches agents nor performs model discovery. Missing events can indicate disabled/untrusted hooks or absent metadata and are not proof that routing never happened.
 
 ## Interpret
 

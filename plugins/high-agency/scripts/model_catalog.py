@@ -10,9 +10,12 @@ import argparse
 from datetime import datetime, timezone
 import json
 import math
+import ntpath
+import os
 from pathlib import Path
 from queue import Empty, Queue
 import re
+import shutil
 import subprocess
 import sys
 from threading import Thread
@@ -77,12 +80,19 @@ def resolve(models: list[dict[str, Any]], excluded: tuple[str, ...] = ()) -> dic
     for route, (preferences, effort) in ROLES.items():
         family = next((candidate for candidate in preferences if candidate in latest), None)
         if family is None:
-            routes[route] = {"model": None, "reasoning_effort": None, "fallback": "current main model"}
+            routes[route] = {"model": None, "reasoning_effort": None,
+                             "requested_family": preferences[0], "requested_effort": effort,
+                             "effort_status": "unverified", "fallback": "current main model"}
             continue
         item = latest[family]
+        selected_effort = supported_effort(item, effort)
         routes[route] = {
             "model": item["model"],
-            "reasoning_effort": supported_effort(item, effort),
+            "reasoning_effort": selected_effort,
+            "requested_family": preferences[0],
+            "requested_effort": effort,
+            "effort_status": ("supported" if selected_effort == effort
+                              else "supported_fallback" if selected_effort else "unverified"),
             "supported_reasoning_efforts": [entry["reasoningEffort"]
                 for entry in (item.get("supportedReasoningEfforts") if isinstance(item.get("supportedReasoningEfforts"), list) else [])
                 if isinstance(entry, dict) and isinstance(entry.get("reasoningEffort"), str)],
@@ -91,13 +101,71 @@ def resolve(models: list[dict[str, Any]], excluded: tuple[str, ...] = ()) -> dic
     return routes
 
 
-def read_live(command: list[str], timeout: float = 8.0) -> list[dict[str, Any]]:
+def report(models: list[dict[str, Any]], source: str, excluded: tuple[str, ...] = (),
+           *, query_failed: bool = False) -> dict[str, Any]:
+    """Separate catalog transport, selection and claims that require other evidence.
+
+    app-server can return a cached/bundled catalog. A query timestamp does not
+    prove the catalog's age, account entitlement, or a subagent's served model.
+    """
+    routes = resolve(models, excluded)
+    selected = sum(route["model"] is not None for route in routes.values())
+    result = {
+        "schema_version": 1,
+        "source": source,
+        "resolved_at": datetime.now(timezone.utc).isoformat(),
+        "query_status": "failed" if query_failed else "succeeded",
+        "freshness_status": "unverified",
+        "freshness": ("caller-supplied; not independently verified" if source == "supplied model/list"
+                      else "unverified; app-server may return a cached or bundled catalog"),
+        "entitlement_status": "unverified",
+        "dispatch_status": "not_observed",
+        "selection_status": "resolved" if selected == len(routes) else "partial" if selected else "fallback",
+        "routes": routes,
+    }
+    if query_failed:
+        result["warning"] = "Catalog unavailable or incomplete; keep the current main model. Latest availability is unverified."
+    elif not selected:
+        result["warning"] = "No supported family matched the catalog; keep the current main model. Latest availability is unverified."
+    elif selected < len(routes):
+        result["warning"] = "Some roles have no supported catalog model and keep the current main model. Latest availability is unverified."
+    return result
+
+
+def cli_command(binary: str, *, windows: bool | None = None) -> tuple[list[str] | str, dict[str, str] | None]:
+    """Launch native executables directly; support Windows npm .cmd shims safely.
+
+    cmd gets a fixed command string. Expanding the path from a child-only env
+    variable once avoids treating path characters as command syntax; delayed
+    expansion and AutoRun are disabled. No provider settings are changed.
+    """
+    executable = shutil.which(binary)
+    if not executable:
+        raise FileNotFoundError("Codex executable unavailable")
+    windows = os.name == "nt" if windows is None else windows
+    if not windows or Path(executable).suffix.lower() not in {".cmd", ".bat"}:
+        return [executable, "app-server"], None
+    interpreter_path = os.environ.get("COMSPEC", "")
+    if not ntpath.isabs(interpreter_path):
+        interpreter_path = ntpath.join(os.environ.get("SystemRoot", r"C:\Windows"), "System32", "cmd.exe")
+    interpreter = shutil.which(interpreter_path)
+    if not interpreter or any(char in executable for char in ('"', '\r', '\n', '\0')):
+        raise ValueError("Unsupported Windows command path")
+    env = dict(os.environ)
+    env["HIGH_AGENCY_CODEX_APP_SERVER_BIN"] = executable
+    command = (subprocess.list2cmdline([interpreter])
+               + ' /d /v:off /s /c ""%HIGH_AGENCY_CODEX_APP_SERVER_BIN%" app-server"')
+    return command, env
+
+
+def read_live(command: list[str] | str, timeout: float = 8.0,
+              env: dict[str, str] | None = None) -> list[dict[str, Any]]:
     """Read every catalog page over stdio with one total time budget."""
     if not math.isfinite(timeout) or timeout <= 0:
         raise ValueError("timeout must be positive and finite")
     deadline = time.monotonic() + timeout
     proc = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                            stderr=subprocess.DEVNULL, text=True, encoding="utf-8")
+                            stderr=subprocess.DEVNULL, text=True, encoding="utf-8", env=env)
     inbox: Queue[Any] = Queue(maxsize=256)
 
     def receive() -> None:
@@ -145,7 +213,7 @@ def read_live(command: list[str], timeout: float = 8.0) -> list[dict[str, Any]]:
             return result
 
     try:
-        request("initialize", 1, {"clientInfo": {"name": "high_agency_model_catalog", "version": "0.11.0"}})
+        request("initialize", 1, {"clientInfo": {"name": "high_agency_model_catalog", "title": "High Agency Model Catalog", "version": "0.12.0"}})
         send({"method": "initialized", "params": {}})
         models, seen = [], set()
         cursor = None
@@ -163,16 +231,35 @@ def read_live(command: list[str], timeout: float = 8.0) -> list[dict[str, Any]]:
             seen.add(cursor)
         raise ValueError("model catalog page limit exceeded")
     finally:
-        if proc.poll() is None:
-            proc.terminate()
+        # EOF lets an app-server launched through a Windows npm shim exit along
+        # with its wrapper, instead of leaving the server behind the killed cmd.
+        try:
+            proc.stdin.close()
+        except OSError:
+            pass
+        try:
+            proc.wait(timeout=0.2)
+        except subprocess.TimeoutExpired:
+            if os.name == "nt" and isinstance(command, str):
+                killer = shutil.which("taskkill.exe")
+                if killer:
+                    try:
+                        subprocess.run([killer, "/PID", str(proc.pid), "/T", "/F"],
+                                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1)
+                    except (OSError, subprocess.TimeoutExpired):
+                        pass
+            if proc.poll() is None:
+                proc.terminate()
         try:
             proc.wait(timeout=1)
         except subprocess.TimeoutExpired:
             proc.kill()
             proc.wait(timeout=1)
         reader.join(timeout=0.2)
-        proc.stdin.close()
-        proc.stdout.close()
+        # An inherited stdout pipe in an uncooperative child must not make close
+        # wait for the reader lock forever. The daemon closes at process exit.
+        if not reader.is_alive():
+            proc.stdout.close()
 
 
 def main() -> int:
@@ -192,15 +279,13 @@ def main() -> int:
             if page.get("nextCursor") is not None:
                 raise ValueError("incomplete catalog: fetch remaining pages")
         else:
-            models = read_live([args.codex_bin, "app-server"], args.timeout)
-        print(json.dumps({"source": "supplied model/list" if args.catalog else "codex app-server model/list",
-                          "resolved_at": datetime.now(timezone.utc).isoformat(),
-                          "freshness": "caller-supplied; not independently verified" if args.catalog else "runtime query",
-                          "routes": resolve(models, tuple(args.exclude_model))}, indent=2))
+            command, env = cli_command(args.codex_bin)
+            models = read_live(command, args.timeout, env)
+        print(json.dumps(report(models, "supplied model/list" if args.catalog else "codex app-server model/list",
+                                tuple(args.exclude_model)), indent=2))
         return 0
     except (OSError, ValueError, TimeoutError, subprocess.SubprocessError):
-        print(json.dumps({"source": "unavailable", "routes": resolve([]),
-                          "warning": "Catalog unavailable or incomplete; keep the current main model. Latest availability is unverified."}))
+        print(json.dumps(report([], "unavailable", query_failed=True)))
         return 2
 
 

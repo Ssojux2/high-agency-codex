@@ -1,8 +1,78 @@
 {
-  "description":"High Agency Git-baseline tracking, targeted verification guard, conditional final diff review, and bounded continuation.",
-  "hooks":{
-    "UserPromptSubmit":[{"hooks":[{"type":"command","command":"python3 ${PLUGIN_ROOT}/hooks/verification_state.py","timeout":2}]}],
-    "PostToolUse":[{"matcher":"Bash|Edit|Write|apply_patch","hooks":[{"type":"command","command":"python3 ${PLUGIN_ROOT}/hooks/verification_state.py","timeout":2}]}],
-    "Stop":[{"hooks":[{"type":"command","command":"python3 ${PLUGIN_ROOT}/hooks/stop_loop.py","timeout":3,"statusMessage":"Checking High Agency completion"}]}]
+  "description": "Task-local baseline tracking, completion evidence, conditional diff review, and bounded continuation.",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"import sys; sys.path[:]=[p for p in sys.path if p]; import os,runpy; p=os.path.join(os.environ['PLUGIN_ROOT'],'hooks'); sys.path.insert(0,p); runpy.run_path(os.path.join(p,'verification_state.py'),run_name='__main__')\"",
+            "commandWindows": "python -c \"import sys; sys.path[:]=[p for p in sys.path if p]; import os,runpy; p=os.path.join(os.environ['PLUGIN_ROOT'],'hooks'); sys.path.insert(0,p); runpy.run_path(os.path.join(p,'verification_state.py'),run_name='__main__')\"",
+            "timeout": 12
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell|Edit|Write|NotebookEdit|apply_patch|Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"import sys; sys.path[:]=[p for p in sys.path if p]; import os,runpy; p=os.path.join(os.environ['PLUGIN_ROOT'],'hooks'); sys.path.insert(0,p); runpy.run_path(os.path.join(p,'verification_state.py'),run_name='__main__')\"",
+            "commandWindows": "python -c \"import sys; sys.path[:]=[p for p in sys.path if p]; import os,runpy; p=os.path.join(os.environ['PLUGIN_ROOT'],'hooks'); sys.path.insert(0,p); runpy.run_path(os.path.join(p,'verification_state.py'),run_name='__main__')\"",
+            "timeout": 12
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|PowerShell|Edit|Write|NotebookEdit|apply_patch|Skill|TaskStop",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"import sys; sys.path[:]=[p for p in sys.path if p]; import os,runpy; p=os.path.join(os.environ['PLUGIN_ROOT'],'hooks'); sys.path.insert(0,p); runpy.run_path(os.path.join(p,'verification_state.py'),run_name='__main__')\"",
+            "commandWindows": "python -c \"import sys; sys.path[:]=[p for p in sys.path if p]; import os,runpy; p=os.path.join(os.environ['PLUGIN_ROOT'],'hooks'); sys.path.insert(0,p); runpy.run_path(os.path.join(p,'verification_state.py'),run_name='__main__')\"",
+            "timeout": 12
+          }
+        ]
+      },
+      {
+        "matcher": "Agent|spawn_agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"import sys; sys.path[:]=[p for p in sys.path if p]; import os,runpy; p=os.path.join(os.environ['PLUGIN_ROOT'],'hooks'); sys.path.insert(0,p); runpy.run_path(os.path.join(p,'routing_observer.py'),run_name='__main__')\"",
+            "commandWindows": "python -c \"import sys; sys.path[:]=[p for p in sys.path if p]; import os,runpy; p=os.path.join(os.environ['PLUGIN_ROOT'],'hooks'); sys.path.insert(0,p); runpy.run_path(os.path.join(p,'routing_observer.py'),run_name='__main__')\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"import sys; sys.path[:]=[p for p in sys.path if p]; import os,runpy; p=os.path.join(os.environ['PLUGIN_ROOT'],'hooks'); sys.path.insert(0,p); runpy.run_path(os.path.join(p,'stop_loop.py'),run_name='__main__')\"",
+            "commandWindows": "python -c \"import sys; sys.path[:]=[p for p in sys.path if p]; import os,runpy; p=os.path.join(os.environ['PLUGIN_ROOT'],'hooks'); sys.path.insert(0,p); runpy.run_path(os.path.join(p,'stop_loop.py'),run_name='__main__')\"",
+            "timeout": 12
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"import sys; sys.path[:]=[p for p in sys.path if p]; import os,runpy; p=os.path.join(os.environ['PLUGIN_ROOT'],'hooks'); sys.path.insert(0,p); runpy.run_path(os.path.join(p,'verification_state.py'),run_name='__main__')\"",
+            "commandWindows": "python -c \"import sys; sys.path[:]=[p for p in sys.path if p]; import os,runpy; p=os.path.join(os.environ['PLUGIN_ROOT'],'hooks'); sys.path.insert(0,p); runpy.run_path(os.path.join(p,'verification_state.py'),run_name='__main__')\"",
+            "timeout": 12
+          }
+        ]
+      }
+    ]
   }
 }
