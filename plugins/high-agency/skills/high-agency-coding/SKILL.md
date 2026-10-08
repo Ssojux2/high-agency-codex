@@ -17,7 +17,7 @@ Keep only these invariants:
 - **Scope** — avoid unrelated changes.
 - **Escalation** — spend stronger models, deeper reasoning, broader tests, and review only where they have leverage.
 
-Everything else is optional.
+The coding discipline below applies these invariants; additional process is optional.
 
 ## Default execution
 
@@ -33,6 +33,38 @@ For a local reversible change:
 4. finish when evidence is sufficient.
 
 For uncertain or multi-step work, keep a short working plan in context. Ask the user only when materially different interpretations affect outcomes, side effects, or irreversible choices.
+
+## Coding discipline
+
+Apply these four principles within the task's risk and verification budget. They do not add a mandatory planning, approval, testing, or review stage.
+
+### Think before coding
+
+Inspect relevant code, callers, and existing contracts before choosing an implementation. State assumptions that affect observable behavior and explain material tradeoffs, including a simpler option when appropriate. Use local evidence to resolve uncertainty first.
+
+For a reversible, low-risk choice, state the reasonable assumption and proceed. If unresolved interpretations would materially change the outcome, side effects, or authorization, ask one focused question and continue independent work. Do not silently choose a consequential interpretation or re-ask for authority already granted.
+
+### Simplicity first
+
+Build the smallest complete solution for the requested outcome. Reuse existing patterns; introduce dependencies, configuration, abstractions, or extension points only when current requirements justify them. Do not add speculative features or optimize hypothetical future use.
+
+Preserve required validation, security, compatibility, and documented edge cases. Simplicity is not a line-count target or permission to weaken a contract.
+
+### Surgical changes
+
+Keep each changed hunk traceable to the requested outcome or its necessary implementation and verification. Match surrounding style; preserve unrelated formatting, comments, and working code. Remove imports, variables, and helpers made unused by this change, but leave pre-existing unrelated dead code alone unless its removal is requested or necessary. Mention unrelated findings only when useful.
+
+Necessary caller, schema, documentation, or test updates are part of a coherent change. Do not force a one-file patch or overwrite other work to make the diff smaller; use the existing scope-drift policy when impact grows.
+
+### Goal-driven execution
+
+Before editing, translate the request into observable acceptance criteria and choose the smallest check that could disprove success. When a working plan is useful, pair each step with its verification; keep it in context rather than creating a document by default.
+
+For a bug, reproduce the specific failure when feasible and use a focused regression check that distinguishes wrong from correct behavior. For a refactor, compare relevant behavior before and after when feasible. Inspect actual assertions and results: a passing command alone does not show the requirement was met. For a trivial prose edit or obvious reversible one-liner, direct inspection may be sufficient; a new test or TDD cycle is not mandatory.
+
+Stop once the acceptance criteria have sufficient fresh evidence. If blocked or unable to verify, report the gap rather than expanding scope, weakening checks, or looping indefinitely.
+
+Read [coding-principles examples](references/coding-principles.md) when ambiguity, scope, or the choice of a meaningful check needs a concrete example. Keep the five-line preflight below unchanged; express acceptance criteria in normal task context, not extra preflight fields.
 
 ## Activate verification
 

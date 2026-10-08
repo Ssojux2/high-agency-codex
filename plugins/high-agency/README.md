@@ -1,8 +1,10 @@
 # high-agency
 
-Version: **0.12.1**
+Version: **0.13.0**
 
-This patch fixes a hook timeout while parsing assistant responses with many blank lines. The Impact estimate remains a single immutable line; CRLF and horizontal whitespace are supported. Codex keeps its native Stop decision format.
+Version 0.13.0 adds explicit assumptions, proportional implementation, focused edits, and observable acceptance criteria to the coding and bounded-autonomy skills. See [coding examples and attribution](skills/high-agency-coding/references/coding-principles.md). Existing hooks, model selection, and platform launchers are unchanged.
+
+The 0.12.1 hook fix remains included: whitespace-heavy assistant responses stay within the Impact parser timeout, CRLF and horizontal whitespace are supported, and Codex keeps its native Stop decision format.
 
 ## Prerequisites
 
@@ -19,7 +21,7 @@ An activated virtual environment is acceptable if Codex inherits its PATH. Nativ
 
 Lightweight Codex plugin containing:
 
-- `high-agency-coding`: direct autonomous coding with fresh verification.
+- `high-agency-coding`: direct autonomous coding with explicit assumptions, focused edits, and fresh verification.
 - `bounded-autonomy`: opt-in bounded continuation via the bundled Stop hook.
 - `high-agency-doctor`: read-only configuration and routing diagnostics.
 - `scripts/model_catalog.py`: catalog metadata lookup and family selection.

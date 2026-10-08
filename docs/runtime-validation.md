@@ -126,3 +126,16 @@ certify correctness or force an endless testing loop.
 Authenticated task-quality, entitlement, background event delivery and token-cost
 measurements are separate release evidence. Passing subprocess fixtures should
 never be reported as an authenticated end-to-end model test.
+
+## 0.13.0 instruction integration checks (2026-10-08)
+
+This release applies the [coding principles](../plugins/high-agency/skills/high-agency-coding/references/coding-principles.md) through skills and delegation guidance. Hook code, platform launchers, role model/effort metadata, and the five-line preflight block are unchanged.
+
+Local Linux checks with Python 3.12:
+
+- Regression suite: 204 tests discovered: 198 passed and 6 adapter/platform-specific cases skipped; no failures.
+- Native loading: Codex 0.160.1 installed and enabled the local plugin at version 0.13.0 and completed a metadata-only catalog query in an isolated home.
+- Both adapters contain identical common coding-principle guidance and examples; changed Markdown links resolve locally.
+- Two fresh assistant tasks explicitly loaded the revised skills in disposable projects. The Codex-guidance task corrected stable tie ordering and strengthened an existing score-only regression to check identifier order and input preservation. Replaying that regression against the original implementation failed; the fixed implementation passed both tests. The Claude-guidance task changed only the requested README quick-start port, retained the separate legacy example, and used diff inspection without a code-test run.
+
+These two tasks check instruction interpretation, not authenticated native Claude/Codex task execution or automatic hook activation. They are smoke checks, not a matched comparative benchmark or a run of all 12 evaluation scenarios. Native Windows/macOS results belong to the CI run for the corresponding commit; no cross-platform result is inferred from this Linux run.

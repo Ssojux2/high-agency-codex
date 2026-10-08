@@ -83,18 +83,20 @@ Avoid multiple writing agents touching overlapping files.
 
 ### Testing / verification
 
-- Running commands and summarizing results: latest available Luna with supported low effort.
+- Checking specified acceptance conditions with targeted tests or direct inspection: latest available Luna with supported low effort.
 - Mapping failures to likely affected areas: Sol medium; Terra only as a compatibility fallback.
 - Non-obvious failure triage: Sol high.
 - Deep failure after two evidence-based attempts: escalate once to Sol/Astra rather than adding blind iterations.
 
-The main thread decides whether evidence proves the acceptance criteria.
+The main thread decides whether evidence proves the acceptance criteria. Map expected and observed results to the requested behavior; a passing command covers only what it actually exercised. State unverified criteria instead of inferring success from a green suite.
 
 ### Review
 
 - Small local change: no extra reviewer.
 - Conditional focused review: Sol high.
 - Security/auth/schema/high-impact architecture: Astra high for the risky surface only.
+
+When review is warranted, inspect touched changes for requirement traceability, unnecessary complexity, and unintended scope. Do not turn findings into unrelated cleanup.
 
 ## Effort policy
 
@@ -154,11 +156,11 @@ When the runtime exposes context-fork controls, propagate the smallest context t
 
 A delegated task should normally contain only:
 
-1. **Goal** — one bounded question or deliverable.
-2. **Relevant evidence** — exact files, symbols, errors, or observations already known.
-3. **Constraints** — what not to change and any permissions/risk boundary. Include **do not delegate further** unless the root explicitly wants another independent branch.
-4. **Expected return** — findings, bounded patch, command result, or decision.
-5. **Stop condition** — when the subagent should return instead of broadening scope.
+1. **Goal** — one bounded question or deliverable tied to the authorized outcome and observable acceptance conditions.
+2. **Relevant evidence** — exact files, symbols, errors, or observations already known; distinguish facts from material assumptions or unknowns.
+3. **Constraints** — what not to change and any permissions/risk boundary; delegation does not expand these. Include **do not delegate further** unless the root explicitly wants another independent branch.
+4. **Expected return** — findings, bounded patch, decision, or evidence mapped to the checked acceptance conditions with gaps stated plainly.
+5. **Stop condition** — when the subagent should return instead of broadening scope; surface unresolved material decisions to the main thread.
 
 Do not send the entire problem statement and repo history to every agent by default.
 
