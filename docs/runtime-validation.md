@@ -127,6 +127,23 @@ Authenticated task-quality, entitlement, background event delivery and token-cos
 measurements are separate release evidence. Passing subprocess fixtures should
 never be reported as an authenticated end-to-end model test.
 
+## 0.14.0 retest policy checks (2026-10-16)
+
+The verification hook now returns the documented `PreToolUse` deny shape
+(`hookSpecificOutput.permissionDecision: "deny"` with `permissionDecisionReason`)
+for one identical verification rerun that cannot add evidence: the same command,
+working directory and shell on a complete snapshot equal to its last pass, or to
+its last failure with no change since. The next identical request runs. Incomplete
+snapshots are never denied. A hook-denied call's later host completion is ignored
+rather than recorded as a failure. Failed runs of one check are counted; at two
+(one fix plus one retest) the Stop guard asks for a report or escalation instead
+of another rerun.
+
+Regression coverage exercises a real unittest run through the hook for: an
+unchanged pass denied once and rerun allowed after an edit; a denied call's
+completion leaving evidence unchanged; a failure without a fix denied once; and
+a failure → fix with a new data case → retest → second failure → final fix path.
+
 ## 0.13.0 instruction integration checks (2026-10-08)
 
 This release applies the [coding principles](../plugins/high-agency/skills/high-agency-coding/references/coding-principles.md) through skills and delegation guidance. Hook code, platform launchers, role model/effort metadata, and the five-line preflight block are unchanged.

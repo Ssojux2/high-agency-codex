@@ -23,6 +23,9 @@ SCHEMA_VERSION = 2
 MAX_NATIVE_FILES = 512
 MAX_PENDING_CHECKS = 64
 MAX_TRACKING_BYTES = 3 * 1024 * 1024
+MAX_REPEAT_RECORDS = 32
+# One fix plus one retest is the expected repair loop for a failing check.
+RETEST_BUDGET = 2
 NATIVE_TOOLS = {"Edit", "Write", "NotebookEdit", "apply_patch"}
 SHELL_TOOLS = {"Bash", "PowerShell"}
 PATCH_PATH_RE = re.compile(r"^\*\*\* (?:Update|Add|Delete) File:\s*(.+?)\s*$", re.MULTILINE)
@@ -120,6 +123,9 @@ def new_task_state(payload: dict, cwd: str, *, active: bool = False) -> dict:
         "retired_agent_ids": [],
         "verification_tracking_incomplete": False,
         "failed_checks": {},
+        "passed_checks": {},
+        "repeat_denials": {},
+        "denied_tool_ids": [],
         "native_files": {},
         "native_tracking_truncated": False,
         "native_dirty": False,
@@ -164,6 +170,13 @@ def _validate_state(data: dict) -> None:
             raise ValueError("Invalid child task binding")
     if not isinstance(data.get("continuation"), dict):
         raise ValueError("Invalid continuation state")
+    # Repeat-run records were added after schema 2; older states simply lack them.
+    for field in ("passed_checks", "repeat_denials"):
+        if field in data and not (isinstance(data[field], dict) and all(
+                isinstance(key, str) and isinstance(value, str) for key, value in data[field].items())):
+            raise ValueError("Invalid repeat-run record")
+    if "denied_tool_ids" in data and not isinstance(data["denied_tool_ids"], list):
+        raise ValueError("Invalid repeat-run history")
 
 
 def _remember_identity(data: dict, payload: dict) -> None:
@@ -229,6 +242,71 @@ def _track_native(data: dict, tool_name: str, tool_input, cwd: str, *, before: b
         data["diff_guard_warned"] = False
 
 
+def _snapshot_digest(value) -> str | None:
+    """Stable identity for a complete snapshot; incomplete evidence has none."""
+    if not snapshot_complete(value):
+        return None
+    raw = json.dumps([value.get("root"), value.get("base_ref"), value.get("files"),
+                      value.get("native_files", {})], ensure_ascii=True, sort_keys=True)
+    return hashlib.sha256(raw.encode()).hexdigest()
+
+
+def _bounded_record(records: dict, key: str, value: str) -> None:
+    records.pop(key, None)
+    records[key] = value
+    while len(records) > MAX_REPEAT_RECORDS:
+        records.pop(next(iter(records)))
+
+
+def _repeat_denial(data: dict, check: dict, start: dict, tool_id: str) -> dict | None:
+    """Deny an identical verification rerun that cannot produce new evidence.
+
+    A pass on an unchanged snapshot is already final evidence, and a failed check
+    rerun without any repository change is a blind retry. The first identical
+    attempt is denied with guidance; an immediate second identical attempt is
+    allowed so explicit user requests (flakiness, external environment fixes)
+    are never permanently blocked.
+    """
+    if check.get("kind") != "verification":
+        return None
+    digest = _snapshot_digest(start)
+    if digest is None:
+        return None
+    key = _command_key(check)
+    passed = data.setdefault("passed_checks", {})
+    failure = data["failed_checks"].get(key)
+    if isinstance(failure, dict) and failure.get("snapshot_digest") == digest:
+        reason = (
+            "High Agency retest policy: this exact check already failed and no project file has changed "
+            "since. Rerunning it unchanged repeats the same evidence. Diagnose the failure, make one focused "
+            "fix, then rerun this check once; include at least one test-data case that differs from the "
+            "failing run. If the cause is outside the repository (environment, service, dependency) and is "
+            "now fixed, issue the same command again and it will run."
+        )
+    elif passed.get(key) == digest:
+        reason = (
+            "High Agency retest policy: this exact check already passed on the current, unchanged snapshot. "
+            "Reuse that evidence instead of running it again. If more confidence is genuinely needed, add "
+            "coverage with different test data (new boundary, invalid, or representative cases) rather than "
+            "repeating the same run. If the user explicitly asked for a repeat run, issue the same command "
+            "again and it will run."
+        )
+    else:
+        return None
+    denials = data.setdefault("repeat_denials", {})
+    if denials.get(key) == digest:
+        # Second identical request after guidance: an explicit, informed repeat.
+        denials.pop(key, None)
+        return None
+    _bounded_record(denials, key, digest)
+    data["denied_tool_ids"] = (list(data.get("denied_tool_ids") or []) + [tool_id])[-64:]
+    return {"hookSpecificOutput": {
+        "hookEventName": "PreToolUse",
+        "permissionDecision": "deny",
+        "permissionDecisionReason": reason,
+    }}
+
+
 def _command_key(check: dict) -> str:
     raw = json.dumps([check.get("command_digest"), check.get("cwd"), check.get("shell")], ensure_ascii=True, sort_keys=True)
     return hashlib.sha256(raw.encode()).hexdigest()[:24]
@@ -256,16 +334,25 @@ def _set_status(data: dict) -> None:
         data["verification_status"] = "unverified"
 
 
-def _record_failure(data: dict, tool_id: str, check: dict, result: dict) -> None:
+def _record_failure(data: dict, tool_id: str, check: dict, result: dict, snapshot_after: dict | None = None) -> None:
     data["verification_snapshot"] = None
+    key = _command_key(check)
+    previous = data["failed_checks"].pop(key, None)
+    attempts = previous.get("attempts") if isinstance(previous, dict) else 0
+    attempts = attempts if type(attempts) is int and attempts >= 0 else 0
     failure = {
         "status": result["status"],
         "reason": result.get("reason", "check_did_not_complete"),
         "command": check["command"],
         "tool_use_id": tool_id,
         "exit_code": result.get("exit_code"),
+        # Counts failed runs of this exact check; the retest budget is one fix + one rerun.
+        "attempts": min(attempts + 1, 99),
+        "retest_budget": RETEST_BUDGET,
+        "snapshot_digest": _snapshot_digest(snapshot_after),
     }
-    data["failed_checks"][_command_key(check)] = failure
+    data.setdefault("passed_checks", {}).pop(key, None)
+    data["failed_checks"][key] = failure
     while len(data["failed_checks"]) > 32:
         data["verification_tracking_incomplete"] = True
         data["failed_checks"].pop(next(iter(data["failed_checks"])))
@@ -415,7 +502,7 @@ def _diff_covers_snapshot(check: dict, current: dict, baseline: dict) -> bool:
     return False
 
 
-def process(payload: dict) -> None:
+def process(payload: dict) -> dict | None:
     event = payload.get("hook_event_name")
     if event not in {"UserPromptSubmit", "PreToolUse", "PostToolUse", "PostToolUseFailure", "SubagentStart"}:
         return
@@ -507,16 +594,20 @@ def process(payload: dict) -> None:
                 if check and isinstance(tool_id, str) and tool_id:
                     if len(data["pending_checks"]) >= MAX_PENDING_CHECKS and tool_id not in data["pending_checks"]:
                         data["verification_tracking_incomplete"] = True
-                    else:
-                        # Never replace an earlier invocation's start snapshot.
-                        data["pending_checks"].setdefault(tool_id, {
+                    elif tool_id not in data["pending_checks"]:
+                        start = capture(data, check["cwd"])
+                        denial = _repeat_denial(data, check, start, tool_id)
+                        if denial:
+                            _remember_impact(data, payload)
+                            return denial
+                        data["pending_checks"][tool_id] = {
                             **check,
                             "task_id": data["task_id"],
                             "source_agent_id": agent_id if is_child else None,
                             "status": "running",
-                            "start_snapshot": capture(data, check["cwd"]),
+                            "start_snapshot": start,
                             "run_in_background": tool_input.get("run_in_background") is True,
-                        })
+                        }
                     _set_status(data)
             _remember_impact(data, payload)
             return
@@ -554,6 +645,9 @@ def process(payload: dict) -> None:
                                 workdir=tool_input.get("workdir") if isinstance(tool_input, dict) else None)
         check = data["pending_checks"].get(tool_id)
         result = result_status(payload, HOST_KIND)
+        if tool_id in (data.get("denied_tool_ids") or []):
+            # A hook-denied repeat never ran; its host completion is not evidence.
+            return
         if not isinstance(check, dict) or check.get("task_id") != data["task_id"]:
             # A known current-task failure still invalidates earlier success,
             # but unpaired successful results never create fresh evidence.
@@ -583,6 +677,10 @@ def process(payload: dict) -> None:
         if check["kind"] == "verification":
             if result["status"] == "passed":
                 data["failed_checks"].pop(_command_key(check), None)
+                digest = _snapshot_digest(current)
+                if digest:
+                    _bounded_record(data.setdefault("passed_checks", {}), _command_key(check), digest)
+                data.setdefault("repeat_denials", {}).pop(_command_key(check), None)
                 data["verification_snapshot"] = current
                 data["verification_commands"] = (data["verification_commands"] + [check["command"][:300]])[-8:]
                 data["verification_evidence"] = (data["verification_evidence"] + [{
@@ -595,7 +693,7 @@ def process(payload: dict) -> None:
                 }])[-8:]
                 data["verification_guard_warned"] = False
             elif result["status"] in {"failed", "cancelled"}:
-                _record_failure(data, tool_id, check, result)
+                _record_failure(data, tool_id, check, result, current)
             else:
                 data["verification_snapshot"] = None
                 data["last_unverified_reason"] = result.get("reason")
@@ -617,7 +715,9 @@ def main() -> int:
     except (ValueError, OSError):
         return 0
     if isinstance(payload, dict):
-        process(payload)
+        output = process(payload)
+        if output:
+            sys.stdout.write(json.dumps(output, separators=(",", ":")) + "\n")
     return 0
 
 

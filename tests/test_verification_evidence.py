@@ -216,16 +216,71 @@ class VerificationLifecycleTests(unittest.TestCase):
         self.assertEqual(data["verification_evidence"][-1]["tool_use_id"], "check-1")
         self.assertIsNotNone(data["verification_snapshot"])
 
+    def check_command(self):
+        return "cd " + shlex.quote(str(self.cwd)) + " && " + CHECK if HOST_KIND == "codex" else CHECK
+
+    def pre_decision(self, tool_id):
+        output = self.hook("PreToolUse", command=self.check_command(), tool_id=tool_id).stdout.strip()
+        return json.loads(output)["hookSpecificOutput"] if output else None
+
     def test_actual_failure_invalidates_previous_success_without_source_change(self):
         self.activate()
         self.assertEqual(self.actual_check(tool_id="pass").returncode, 0)
+        # An identical rerun on the unchanged snapshot is denied once; an explicit
+        # second request still runs (e.g. a user-requested flakiness check).
+        self.assertEqual(self.pre_decision("repeat")["permissionDecision"], "deny")
         self.assertNotEqual(self.actual_check(tool_id="fail", fail=True).returncode, 0)
         data = self.data()
         self.assertEqual(data["verification_status"], "failed")
         self.assertIsNone(data["verification_snapshot"])
         self.assertEqual(data["verification_failure"]["tool_use_id"], "fail")
+        self.assertEqual(self.pre_decision("blind-retry")["permissionDecision"], "deny")
         self.assertEqual(self.actual_check(tool_id="recovered").returncode, 0)
         self.assertEqual(self.data()["verification_status"], "passed")
+
+    def test_unchanged_pass_is_not_rerun_until_the_snapshot_changes(self):
+        self.activate()
+        (self.cwd / "app.py").write_text("value = 2\n", encoding="utf-8")
+        self.assertEqual(self.actual_check(tool_id="first").returncode, 0)
+        decision = self.pre_decision("duplicate")
+        self.assertEqual(decision["permissionDecision"], "deny")
+        self.assertIn("already passed", decision["permissionDecisionReason"])
+        self.assertIn("different test data", decision["permissionDecisionReason"])
+        # The denied call never ran, so a host completion for it is not evidence.
+        failure = ({"stdout": "", "stderr": "denied", "interrupted": False} if HOST_KIND == "claude"
+                   else {"exit_code": 1, "output": "denied"})
+        self.hook("PostToolUseFailure" if HOST_KIND == "claude" else "PostToolUse",
+                  command=self.check_command(), tool_id="duplicate", tool_response=failure)
+        self.assertEqual(self.data()["verification_status"], "passed")
+        self.assertEqual(self.data()["pending_checks"], {})
+        # A new edit invalidates the old pass, so the next check runs normally.
+        (self.cwd / "app.py").write_text("value = 3\n", encoding="utf-8")
+        self.assertIsNone(self.pre_decision("after-edit"))
+        self.assertIn("after-edit", self.data()["pending_checks"])
+
+    def test_failure_allows_one_fix_and_one_retest_with_new_data(self):
+        import stop_loop  # noqa: PLC0415
+        self.activate()
+        self.assertNotEqual(self.actual_check(tool_id="fail-1", fail=True).returncode, 0)
+        failure = self.data()["verification_failure"]
+        self.assertEqual(failure["attempts"], 1)
+        self.assertIn("rerun only that check once", stop_loop.verification_problem(self.data(), {}, ["app.py"]))
+        self.assertIn("already failed", self.pre_decision("unfixed")["permissionDecisionReason"])
+        # The fix adds a distinct data case; the retest therefore runs.
+        test_file = self.cwd / "tests/test_app.py"
+        test_file.write_text(test_file.read_text(encoding="utf-8")
+                             + "    def test_boundary(self):\n        self.assertEqual(int(str(app.value)), app.value)\n",
+                             encoding="utf-8")
+        self.assertNotEqual(self.actual_check(tool_id="fail-2", fail=True).returncode, 0)
+        data = self.data()
+        self.assertEqual(data["verification_failure"]["attempts"], 2)
+        message = stop_loop.verification_problem(data, {}, ["app.py"])
+        self.assertIn("Do not rerun it again", message)
+        (self.cwd / "app.py").write_text("value = 4\n", encoding="utf-8")
+        self.assertEqual(self.actual_check(tool_id="fixed").returncode, 0)
+        data = self.data()
+        self.assertEqual(data["verification_status"], "passed")
+        self.assertEqual(data["failed_checks"], {})
 
     def test_mutation_during_successful_check_is_not_verified(self):
         self.activate()

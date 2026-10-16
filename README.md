@@ -2,7 +2,7 @@
 
 High Agency is a lightweight coding scaffold designed to use the LLM's own capability first, then spend extra process, stronger models, or deeper reasoning only where they materially improve correctness.
 
-Current version: **0.13.0**
+Current version: **0.14.0**
 
 ## Prerequisites
 
@@ -40,6 +40,20 @@ It keeps only five invariants:
 - conditional escalation.
 
 It does **not** require planning documents, TDD, worktrees, subagents, broad test suites, or review stages for every task.
+
+## Retest policy in 0.14.0
+
+Verification runs are bounded by evidence, not by guard reminders or continuation passes:
+
+| Situation | Behavior |
+|---|---|
+| Check passed and nothing changed since | Reuse the pass; no repeat run. |
+| Check failed | One focused fix, then one retest. A second failure ends the retry loop: report or escalate. |
+| More confidence needed | Add distinct test data (representative, boundary, invalid/edge, regression) in a single run instead of repeating the same run. The post-fix retest includes at least one case that differs from the failing run. |
+
+The verification hook enforces the first two rows: an identical verification command on an unchanged snapshot — after a pass, or after a failure with no fix — is denied once at `PreToolUse` with this guidance. Issuing the same command again runs it, so explicit user-requested repeats and external environment fixes are never blocked. Failed runs of the same check are counted, and the Stop guard stops asking for a rerun once the fix-and-retest budget is spent. Guard and continuation reminders now ask for checks only where an edit invalidated earlier evidence.
+
+This addresses a reported pattern where a single passing test was run about six times across the verification guard, Impact/diff reminders and continuation passes without any intervening change.
 
 ## Coding principles in 0.13.0
 
@@ -193,7 +207,7 @@ Hooks detect edits made through native edit tools **and** shell commands, genera
 3. Stop compares the current tree against those snapshots.
 4. A relevant later edit invalidates stale verification.
 
-The hook does not run project tests automatically.
+The hook does not run project tests automatically. It denies one identical rerun of a verification command when it cannot produce new evidence (see [retest policy](#retest-policy-in-0140)).
 
 ## Conditional review
 
@@ -454,7 +468,9 @@ End-to-end success claims are intentionally not published without equal-model/eq
 
 ## Development status
 
-**v0.12.0 remains the runtime evaluation baseline; v0.13.0 adds the requested coding-principle guidance.**
+**v0.12.0 remains the runtime evaluation baseline; v0.13.0 adds the requested coding-principle guidance; v0.14.0 bounds repeated verification runs.**
+
+The 0.14.0 runtime change is a correctness/efficiency fix driven by observed duplicate work (the same passing test run repeatedly without changes). It does not claim a measured token or latency reduction.
 
 The 0.13.0 update changes instructions and evaluation criteria without extending runtime heuristics or claiming a measured performance gain. Comparative model behavior still requires matched end-to-end runs.
 

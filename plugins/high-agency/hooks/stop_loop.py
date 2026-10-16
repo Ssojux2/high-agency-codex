@@ -378,9 +378,18 @@ def verification_problem(data: dict, current: dict, relevant: list[str]) -> str 
     failure = mapping(data.get("verification_failure"))
     if status in {"failed", "cancelled"} or failure.get("status") in {"failed", "cancelled"}:
         label = "was cancelled" if status == "cancelled" else "failed"
+        attempts = failure.get("attempts")
+        budget = failure.get("retest_budget")
+        if type(attempts) is int and type(budget) is int and attempts >= budget:
+            return (
+                f"the same verification {label} again after a fix and one retest "
+                f"({attempts} failed runs). Do not rerun it again. Report the failure and its "
+                "evidence honestly, or escalate per the failure-handling policy before any new attempt."
+            )
         return (
-            f"the latest relevant verification {label}. Make a focused correction and rerun "
-            "only the affected check when useful, or report the failure/blocker honestly."
+            f"the latest relevant verification {label}. Diagnose it, make one focused fix, then "
+            "rerun only that check once, adding at least one test-data case that differs from the "
+            "failing run; or report the failure/blocker honestly."
         )
     pending = any(
         mapping(check).get("kind") == "verification"
@@ -422,7 +431,8 @@ def verification_problem(data: dict, current: dict, relevant: list[str]) -> str 
         return (
             "the current code/config changes have no successful verification evidence for "
             "this exact Git and native-file snapshot. Run the narrowest relevant targeted "
-            "check, or report the remaining scope as UNVERIFIED."
+            "check once, covering distinct test-data cases in that single run, or report the "
+            "remaining scope as UNVERIFIED."
         )
     return None
 
@@ -531,12 +541,14 @@ def process_stop(payload: dict) -> dict:
                 data["diff_guard_warned"] = True
                 action = (
                     "Major scope drift. Inspect the focused final diff and the expanded semantic "
-                    "boundary. Extend verification only for the newly affected risk surface."
+                    "boundary. Extend verification only for the newly affected risk surface; "
+                    "do not rerun checks that already passed on the current snapshot."
                 )
             else:
                 action = (
                     "Minor scope drift. Extend verification to the newly affected surface; "
-                    "a full suite or extra reviewer needs an additional risk signal."
+                    "do not rerun checks that already passed on the current snapshot. "
+                    "A full suite or extra reviewer needs an additional risk signal."
                 )
             return block(
                 data,
@@ -570,6 +582,7 @@ def process_stop(payload: dict) -> dict:
             reason = (
                 f"Final bounded-autonomy continuation {count}/{limit}. Make the highest-value "
                 "remaining progress, verify only the touched/affected scope when possible, "
+                "reuse checks that already passed on an unchanged snapshot, "
                 "do not emit another continuation marker, and report evidence, failed/pending/"
                 "unverified checks, or the blocker honestly."
             )
@@ -577,6 +590,7 @@ def process_stop(payload: dict) -> dict:
             reason = (
                 f"Bounded-autonomy continuation {count}/{limit}. Continue from the current "
                 "repository state with an independently verifiable step and targeted checks. "
+                "Rerun a check only when this pass changed what it covers; reuse still-valid passes. "
                 "Request another pass only after meaningful progress; if useful, end with "
                 f"<!-- high-agency:continue max={limit} -->."
             )

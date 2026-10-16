@@ -1,6 +1,8 @@
 # high-agency
 
-Version: **0.13.0**
+Version: **0.14.0**
+
+Version 0.14.0 bounds repeated verification: a passing check is not rerun on an unchanged snapshot, a failing check gets one focused fix and one retest, and confidence comes from distinct test data in a single run rather than repetitions. The verification hook denies one identical no-new-evidence rerun at `PreToolUse`; repeating the same command afterwards runs it.
 
 Version 0.13.0 adds explicit assumptions, proportional implementation, focused edits, and observable acceptance criteria to the coding and bounded-autonomy skills. See [coding examples and attribution](skills/high-agency-coding/references/coding-principles.md). Existing hooks, model selection, and platform launchers are unchanged.
 
