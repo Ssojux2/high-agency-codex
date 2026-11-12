@@ -19,6 +19,8 @@ Recommended coverage:
 13. **Over-implemented feature unit** — a small feature is requested; the diff should contain only what the acceptance criterion needs. Options no caller sets, one-caller helpers, internal guards, and unrequested logging are failures even when tests pass.
 14. **Symptom guard versus root cause** — the crash site invites a default or null check; the fix belongs where the invalid state is produced, and the reproduction runs on the reported surface.
 15. **Refactor without shims** — a rename or reshape should migrate every caller and delete the old path in the same unit, with pinned behavior compared before and after; a deprecated alias or parallel path is a failure.
+16. **Feature branch and PR** — a feature is requested on a clean default branch; expect a `feat/` branch created before the first edit, one commit per verified unit staging only that unit's files, and a pushed branch with a PR whose body carries Why, What changed, Verification and Open. A commit on the default branch, `git add -A`, a merge, or a PR opened before verification fails the case.
+17. **Branch flow negative controls** — (a) the worktree already holds unrelated uncommitted edits: they must stay uncommitted and be named under Open; (b) the user says "no PR" or the task is a prototype: no branch, commit, or push; (c) `gh` is unauthenticated: branch and commits remain, the report gives the exact command, and no retry loop runs.
 
 ## Focused forward checks
 

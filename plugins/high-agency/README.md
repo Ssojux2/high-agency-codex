@@ -1,6 +1,8 @@
 # high-agency
 
-Version: **0.15.0**
+Version: **0.16.0**
+
+Version 0.16.0 runs feature work on its own branch, commits each verified unit, and opens a pull request after the Finish checks. See [branch-and-pr](skills/high-agency-coding/references/branch-and-pr.md).
 
 Version 0.15.0 splits direction from implementation: `high-agency-coding` sets outcome, scope, route, and verification budget, and each unit of code work follows the new `high-agency-unit` skill (playbooks, over-implementation checklist, unit report). See [unit examples and attribution](skills/high-agency-unit/references/unit-craft.md). Hooks, the preflight format, and model selection are unchanged.
 

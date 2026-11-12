@@ -51,6 +51,16 @@ Stop once the acceptance criteria have sufficient fresh evidence. If blocked or 
 
 Read [direction examples](references/coding-principles.md) when ambiguity or the choice of a meaningful check needs a concrete case.
 
+## Feature branch and PR
+
+Feature work (new or changed behavior in a git repository) runs on its own branch and ends in a pull request, unless the user or the repository's instructions say otherwise. The main thread owns all git steps; delegates never branch, commit, push, or open PRs.
+
+1. **Branch** — after read-only inspection and before activating verification, switch to `<type>/<slug>` (`feat/…`, `fix/…`, `refactor/…`) off the default branch. Never stash, discard, or commit pre-existing uncommitted changes.
+2. **Commit per unit** — after each unit's check passes, commit only that unit's files with a Conventional Commits message.
+3. **PR after Finish** — push the branch and open a PR against the default branch (`--draft` while anything is unverified). Do not merge.
+
+Read [branch-and-pr](references/branch-and-pr.md) before the first branch step; it holds the exact commands, skip conditions, PR body format, and what to do when push or `gh` is unavailable.
+
 ## Activate verification
 
 Before the first project mutation, run `python3 "<installed-plugin-root>/hooks/verification_state.py" --activate` through the host shell on Linux/macOS; use `python` on native Windows. Resolve the root from this skill's installed location and require Python 3.10+. An activated virtual environment is sufficient; do not install an interpreter or change global settings automatically.
@@ -178,4 +188,6 @@ Before claiming completion, confirm:
 - conditional diff review, if triggered, found no scope drift;
 - unresolved risk is stated plainly.
 
-Report what changed, the verification that matters, and any remaining blocker.
+Then, for feature work, push and open the PR per [branch-and-pr](references/branch-and-pr.md).
+
+Report what changed, the verification that matters, any remaining blocker, and the branch and PR URL when one was opened.

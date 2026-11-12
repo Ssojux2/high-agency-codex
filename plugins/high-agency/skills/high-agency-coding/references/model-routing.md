@@ -172,6 +172,7 @@ Outcome: <acceptance criteria this unit owns and their checks>
 Budget: <the preflight Impact: line and write boundary>
 Scope of proof: <touched | affected | broad>
 Before returning, apply the over-implementation checklist to your diff.
+Do not switch branches, commit, push, or run gh; the main thread owns git.
 Return only the unit report (Unit / Files / Check / Cut / Open).
 ```
 
