@@ -1,16 +1,10 @@
-# Coding principle examples
+# Direction examples
 
-Use these examples when a requirement, scope boundary, or verification choice is unclear. Apply the main skill's risk budget; these examples do not create extra workflow stages.
+Use these examples when a requirement or the choice of a meaningful check is unclear. Apply the main skill's risk budget; these examples do not create extra workflow stages. Implementation-size and diff-scope examples live in [`high-agency-unit`](../../high-agency-unit/references/unit-craft.md).
 
 ## Resolve the consequential uncertainty
 
 For “add a CSV export,” inspect the existing export conventions. If column order is unspecified and easy to change, state the order you inferred and implement it. If exporting private records would change who can access data, resolve that decision before the dependent change. Continue any independent work that is already authorized.
-
-## Keep the implementation proportional
-
-For one existing endpoint's input validation, extend its current validation path and cover the documented valid and invalid cases. Add a new validation framework, shared service, or configuration layer only if an actual requirement needs it. Retain existing authentication and other required boundary checks.
-
-When editing that endpoint, preserve nearby comments and unrelated formatting. Remove a helper only if the edit made it unused or its removal is required for this task. A necessary caller or regression-test update belongs in the same coherent change; a nearby legacy cleanup usually does not.
 
 ## Choose evidence that can expose the failure
 
@@ -35,7 +29,7 @@ A successful process exit is evidence about that process. It proves task complet
 
 ## Source and adaptation
 
-These examples and the main skill's four principles are independently worded adaptations of the Karpathy-inspired community guidelines in [`multica-ai/andrej-karpathy-skills`](https://github.com/multica-ai/andrej-karpathy-skills/tree/2c606141936f1eeef17fa3043a72095b4765b9c2), inspected at commit `2c606141936f1eeef17fa3043a72095b4765b9c2`.
+These examples, the direction rules for assumptions and acceptance criteria, and the surgical and proportional rules now in `high-agency-unit` are independently worded adaptations of the Karpathy-inspired community guidelines in [`multica-ai/andrej-karpathy-skills`](https://github.com/multica-ai/andrej-karpathy-skills/tree/2c606141936f1eeef17fa3043a72095b4765b9c2), inspected at commit `2c606141936f1eeef17fa3043a72095b4765b9c2`.
 
 Reviewed sources: [`CLAUDE.md`](https://github.com/multica-ai/andrej-karpathy-skills/blob/2c606141936f1eeef17fa3043a72095b4765b9c2/CLAUDE.md), [`skills/karpathy-guidelines/SKILL.md`](https://github.com/multica-ai/andrej-karpathy-skills/blob/2c606141936f1eeef17fa3043a72095b4765b9c2/skills/karpathy-guidelines/SKILL.md), and [`EXAMPLES.md`](https://github.com/multica-ai/andrej-karpathy-skills/blob/2c606141936f1eeef17fa3043a72095b4765b9c2/EXAMPLES.md). Upstream plugin metadata names `forrestchang` as author and declares MIT. The project is inspired by Karpathy's observations; it is not presented as authored or endorsed by him.
 

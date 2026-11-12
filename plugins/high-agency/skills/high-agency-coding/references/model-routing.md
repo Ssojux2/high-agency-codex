@@ -79,6 +79,8 @@ Do not use Astra to write a routine plan.
 - Mechanical repeated edits with a precise transformation: Luna when deterministic and easy to verify; otherwise Sol.
 - Cross-cutting/novel implementation where design and code are tightly coupled: Sol high; Astra only if the hard reasoning cannot be isolated from implementation.
 
+Every writing child follows `high-agency-unit`; see the handoff packet.
+
 Avoid multiple writing agents touching overlapping files.
 
 ### Testing / verification
@@ -161,6 +163,19 @@ A delegated task should normally contain only:
 3. **Constraints** — what not to change and any permissions/risk boundary; delegation does not expand these. Include **do not delegate further** unless the root explicitly wants another independent branch.
 4. **Expected return** — findings, bounded patch, decision, or evidence mapped to the checked acceptance conditions with gaps stated plainly.
 5. **Stop condition** — when the subagent should return instead of broadening scope; surface unresolved material decisions to the main thread.
+
+For a child that writes code (WORKHORSE, or CHEAP DELEGATE doing mechanical edits), the brief also carries the unit contract:
+
+```text
+Follow the high-agency-unit skill at <installed path>/skills/high-agency-unit/SKILL.md.
+Outcome: <acceptance criteria this unit owns and their checks>
+Budget: <the preflight Impact: line and write boundary>
+Scope of proof: <touched | affected | broad>
+Before returning, apply the over-implementation checklist to your diff.
+Return only the unit report (Unit / Files / Check / Cut / Open).
+```
+
+If the child cannot load skills, paste the playbook steps, the checklist, and the report format from that file into the brief instead of the path.
 
 Do not send the entire problem statement and repo history to every agent by default.
 

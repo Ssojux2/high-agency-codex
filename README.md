@@ -2,7 +2,7 @@
 
 High Agency is a lightweight coding scaffold designed to use the LLM's own capability first, then spend extra process, stronger models, or deeper reasoning only where they materially improve correctness.
 
-Current version: **0.14.0**
+Current version: **0.15.0**
 
 ## Prerequisites
 
@@ -41,6 +41,23 @@ It keeps only five invariants:
 
 It does **not** require planning documents, TDD, worktrees, subagents, broad test suites, or review stages for every task.
 
+## Direction vs unit layers in 0.15.0
+
+Two skills now split the work that one skill used to cover:
+
+| Layer | Skill | Owns |
+|---|---|---|
+| Direction | `high-agency-coding` | Outcome and acceptance criteria, material assumptions, the five-line preflight, route, Impact budget and drift, verification budget, finish. |
+| Unit | `high-agency-unit` | How one unit of code is written: feature / bug-fix / refactor / perf / prototype playbooks, data shape first, guards at boundaries only, behavior-level tests, and an over-implementation checklist run on the diff. |
+
+Handoff contract: direction passes down the acceptance criteria the unit owns, the preflight `Impact:` line with the write boundary, and the allowed verification scope. The unit returns a five-line report (`Unit` / `Files` / `Check` / `Cut` / `Open`). A unit never widens outcome, budget, or verification scope on its own; it reports the pressure and direction applies the existing drift policy.
+
+The checklist targets the over-implementation seen in detailed feature work: options no caller sets, one-caller wrappers, defensive guards inside trusted internals, compatibility shims, unrequested features, narrating comments, and tests of implementation details. Each hit is deleted unless an acceptance criterion requires it.
+
+A writing WORKHORSE or CHEAP DELEGATE spawn brief carries the same three inputs and instructs the child to follow the unit skill and return the unit report.
+
+The unit layer adds no plan document, mandatory TDD, subagent fan-out, or review stage, and it defers to the 0.14.0 retest policy instead of restating it. The preflight format, hooks, and model routing are unchanged. The unit skill adapts the `pstack` plugin from [`cursor/plugins`](https://github.com/cursor/plugins/tree/2eaf46574b25cdf7ef8c849837099b866b7438ce/pstack) (MIT) in original wording; see [examples and pinned attribution](plugins/high-agency/skills/high-agency-unit/references/unit-craft.md) for what was adopted and what was left out. This is an instruction change; it does not claim a measured quality gain.
+
 ## Retest policy in 0.14.0
 
 Verification runs are bounded by evidence, not by guard reminders or continuation passes:
@@ -57,7 +74,7 @@ This addresses a reported pattern where a single passing test was run about six 
 
 ## Coding principles in 0.13.0
 
-The main coding skill now applies four concrete disciplines:
+This release introduced four disciplines. Since 0.15.0, the first and last live in `high-agency-coding` (direction) and the middle two in `high-agency-unit`:
 
 | Principle | Behavior |
 |---|---|
@@ -468,7 +485,9 @@ End-to-end success claims are intentionally not published without equal-model/eq
 
 ## Development status
 
-**v0.12.0 remains the runtime evaluation baseline; v0.13.0 adds the requested coding-principle guidance; v0.14.0 bounds repeated verification runs.**
+**v0.12.0 remains the runtime evaluation baseline; v0.13.0 adds the requested coding-principle guidance; v0.14.0 bounds repeated verification runs; v0.15.0 splits direction from unit-level implementation.**
+
+The 0.15.0 update changes skills, delegation prompts, and evaluation scenarios only. Hooks and runtime heuristics are untouched, and no measured reduction in over-implementation is claimed until the new scenarios are run.
 
 The 0.14.0 runtime change is a correctness/efficiency fix driven by observed duplicate work (the same passing test run repeatedly without changes). It does not claim a measured token or latency reduction.
 

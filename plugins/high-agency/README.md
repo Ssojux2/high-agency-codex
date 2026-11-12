@@ -1,10 +1,12 @@
 # high-agency
 
-Version: **0.14.0**
+Version: **0.15.0**
+
+Version 0.15.0 splits direction from implementation: `high-agency-coding` sets outcome, scope, route, and verification budget, and each unit of code work follows the new `high-agency-unit` skill (playbooks, over-implementation checklist, unit report). See [unit examples and attribution](skills/high-agency-unit/references/unit-craft.md). Hooks, the preflight format, and model selection are unchanged.
 
 Version 0.14.0 bounds repeated verification: a passing check is not rerun on an unchanged snapshot, a failing check gets one focused fix and one retest, and confidence comes from distinct test data in a single run rather than repetitions. The verification hook denies one identical no-new-evidence rerun at `PreToolUse`; repeating the same command afterwards runs it.
 
-Version 0.13.0 adds explicit assumptions, proportional implementation, focused edits, and observable acceptance criteria to the coding and bounded-autonomy skills. See [coding examples and attribution](skills/high-agency-coding/references/coding-principles.md). Existing hooks, model selection, and platform launchers are unchanged.
+Version 0.13.0 adds explicit assumptions, proportional implementation, focused edits, and observable acceptance criteria to the coding and bounded-autonomy skills. See [direction examples and attribution](skills/high-agency-coding/references/coding-principles.md). Existing hooks, model selection, and platform launchers are unchanged.
 
 The 0.12.1 hook fix remains included: whitespace-heavy assistant responses stay within the Impact parser timeout, CRLF and horizontal whitespace are supported, and Codex keeps its native Stop decision format.
 
@@ -23,7 +25,8 @@ An activated virtual environment is acceptable if Codex inherits its PATH. Nativ
 
 Lightweight Codex plugin containing:
 
-- `high-agency-coding`: direct autonomous coding with explicit assumptions, focused edits, and fresh verification.
+- `high-agency-coding`: direction layer — acceptance criteria, explicit assumptions, preflight, routing, and fresh verification.
+- `high-agency-unit`: unit layer — playbooks and an over-implementation checklist for writing one unit of code.
 - `bounded-autonomy`: opt-in bounded continuation via the bundled Stop hook.
 - `high-agency-doctor`: read-only configuration and routing diagnostics.
 - `scripts/model_catalog.py`: catalog metadata lookup and family selection.

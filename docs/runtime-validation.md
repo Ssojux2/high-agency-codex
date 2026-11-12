@@ -127,6 +127,14 @@ Authenticated task-quality, entitlement, background event delivery and token-cos
 measurements are separate release evidence. Passing subprocess fixtures should
 never be reported as an authenticated end-to-end model test.
 
+## 0.15.0 direction/unit split checks (2026-11-12)
+
+This release moves implementation-level guidance out of `high-agency-coding` into the new [`high-agency-unit`](../plugins/high-agency/skills/high-agency-unit/SKILL.md) skill and updates delegation prompts. Hook code, launchers, model/effort metadata, and the five-line preflight block are unchanged.
+
+Local Linux checks: regression suite 207 passed, 6 skipped; the native Codex CLI validator was not run for this change. `tests/test_unit_skill.py` checks skill frontmatter, the handoff links between the two layers, the checklist and unit-report fields, and that delegated writers are told to follow the unit skill.
+
+These are structural checks of instruction text. Whether the unit layer reduces over-implementation is not established until evaluation scenarios 13-15 are run with matched models and budgets.
+
 ## 0.14.0 retest policy checks (2026-10-16)
 
 The verification hook now returns the documented `PreToolUse` deny shape
