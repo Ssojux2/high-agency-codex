@@ -19,6 +19,8 @@ Direction passes down; when this skill is used alone, infer each from the reques
 
 The unit returns the [unit report](#unit-report). It never widens outcome, budget, or verification scope on its own: it reports the pressure under `Open:` and direction decides.
 
+Git belongs to direction: a unit never switches branches, commits, pushes, or opens a PR. On a feature branch the main thread commits each unit after its report (`high-agency-coding` → "Feature branch and PR").
+
 This skill adds no plan document, mandatory TDD cycle, subagent fan-out, or review stage. How often a check may run is set by `high-agency-coding` → "Run once, retest once, vary the data"; follow it, do not restate it.
 
 ## Playbooks

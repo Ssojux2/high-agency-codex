@@ -18,7 +18,8 @@ For each pass:
 1. pick the highest-value unresolved acceptance criterion;
 2. make one independently verifiable unit of progress, written per `high-agency-unit` (playbook, over-implementation checklist, unit report);
 3. verify only evidence invalidated by the pass, expanding to affected scope only on risk; reuse checks that already passed on an unchanged snapshot, and after a failure apply one fix plus one retest with at least one new test-data case (see `high-agency-coding` → "Run once, retest once, vary the data");
-4. continue only after meaningful new progress.
+4. on a feature branch, commit the verified unit (`high-agency-coding` → "Feature branch and PR"); open the PR only once, after the final pass;
+5. continue only after meaningful new progress.
 
 ## Loop budget
 
