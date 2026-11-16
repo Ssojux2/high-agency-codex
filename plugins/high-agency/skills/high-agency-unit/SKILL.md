@@ -23,6 +23,19 @@ Git belongs to direction: a unit never switches branches, commits, pushes, or op
 
 This skill adds no plan document, mandatory TDD cycle, subagent fan-out, or review stage. How often a check may run is set by `high-agency-coding` → "Run once, retest once, vary the data"; follow it, do not restate it.
 
+## Difficulty tier
+
+Before writing, grade the unit by its hardest fact. The tier picks the route, model family and effort only when the unit is delegated or escalated; a small unit stays on the main thread whatever its tier.
+
+| Tier | The unit is… | Who writes it |
+|---|---|---|
+| T1 mechanical | a rename, caller migration, config or text edit with a known shape | main thread; bulk edits → CHEAP DELEGATE on Luna, low effort |
+| T2 standard | one module, data shape named, check known | main thread or WORKHORSE on Sol, medium effort |
+| T3 hard | a new interface across modules, concurrency or ordering, a subtle algorithm, an auth/data/migration boundary, or a root cause still unlocated after the first reproduction | WORKHORSE on Sol, high effort |
+| T4 frontier | invariants spanning many subsystems, or two failed T3 fixes sharing a premise | STRONG REASONING on Astra sketches types, signatures, invariants and unit order; units are then written at T2/T3 against the sketch |
+
+Grade up, never down, mid-unit: after one fix and one retest fail, the next attempt moves one tier up. Do not send the same question to two tiers. Name the tier in the unit report's `Unit:` line. Exact routes, catalog IDs and fallbacks: `high-agency-coding/references/model-routing.md` → "Unit tiers".
+
 ## Playbooks
 
 Pick the one that matches the unit and copy its steps into working context verbatim. A step you skip stays listed as `skip: <reason>`.
@@ -110,7 +123,7 @@ Run this against the unit's diff before reporting. For each hit, delete it or na
 ## Unit report
 
 ```text
-Unit: <one line: what changed>
+Unit: <one line: what changed> [T1–T4]
 Files: <changed paths>
 Check: <command or inspected surface> → <observed result>
 Cut: <what the checklist removed, or none>

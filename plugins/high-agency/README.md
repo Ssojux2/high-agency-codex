@@ -1,6 +1,8 @@
 # high-agency
 
-Version: **0.16.0**
+Version: **0.17.0**
+
+Version 0.17.0 grades each unit T1–T4 by difficulty: Luna takes T1 bulk edits, Sol writes T2 (medium) and T3 (high), and an Astra sketch precedes T4 before Sol implements it. See [model-routing → Unit tiers](skills/high-agency-coding/references/model-routing.md).
 
 Version 0.16.0 runs feature work on its own branch, commits each verified unit, and opens a pull request after the Finish checks. See [branch-and-pr](skills/high-agency-coding/references/branch-and-pr.md).
 

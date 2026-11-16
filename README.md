@@ -2,7 +2,7 @@
 
 High Agency is a lightweight coding scaffold designed to use the LLM's own capability first, then spend extra process, stronger models, or deeper reasoning only where they materially improve correctness.
 
-Current version: **0.16.0**
+Current version: **0.17.0**
 
 ## Prerequisites
 
@@ -40,6 +40,19 @@ It keeps only five invariants:
 - conditional escalation.
 
 It does **not** require planning documents, TDD, worktrees, subagents, broad test suites, or review stages for every task.
+
+## Unit difficulty tiers in 0.17.0
+
+Following pstack's "code delegates tier by difficulty", each `high-agency-unit` unit is graded by its hardest fact, and the grade picks the route, model family and effort when the unit is delegated or escalated:
+
+| Tier | Example | Route / family |
+|---|---|---|
+| T1 mechanical | rename, caller migration, config edit | main thread; bulk → CHEAP DELEGATE on latest **Luna**, low |
+| T2 standard | one module, data shape named, check known | main thread or WORKHORSE on latest **Sol**, medium |
+| T3 hard | cross-module interface, concurrency, subtle algorithm, auth/data/migration boundary, unlocated root cause | WORKHORSE on latest **Sol**, high; **Astra** writes only when the hard reasoning cannot be isolated from the code |
+| T4 frontier | invariants across many subsystems, or two failed T3 fixes sharing a premise | STRONG REASONING on latest **Astra** sketches types, signatures, invariants and unit order; units run at T2/T3 against it |
+
+Small units still stay on the main thread; single-agent-first is unchanged. A unit moves up one tier after one fix and one retest fail, never down, and never runs on two tiers for the same question. At T4, Astra returns a sketch and does not write code. Exact model IDs still come from the current catalog; when per-spawn model selection is unavailable, the tier is reported as unrouted. No new route or hook is added. Details: [model-routing → Unit tiers](plugins/high-agency/skills/high-agency-coding/references/model-routing.md).
 
 ## Feature branch and PR in 0.16.0
 
@@ -497,7 +510,9 @@ End-to-end success claims are intentionally not published without equal-model/eq
 
 ## Development status
 
-**v0.12.0 remains the runtime evaluation baseline; v0.13.0 adds the requested coding-principle guidance; v0.14.0 bounds repeated verification runs; v0.15.0 splits direction from unit-level implementation; v0.16.0 runs feature work on a branch and ends it in a pull request.**
+**v0.12.0 remains the runtime evaluation baseline; v0.13.0 adds the requested coding-principle guidance; v0.14.0 bounds repeated verification runs; v0.15.0 splits direction from unit-level implementation; v0.16.0 runs feature work on a branch and ends it in a pull request; v0.17.0 picks Luna, Sol, or an Astra sketch per unit difficulty tier.**
+
+The 0.17.0 update changes skills, delegation prompts, and evaluation scenarios only; hooks and the model catalog helper are untouched.
 
 The 0.16.0 update changes skills and delegation prompts only; hooks are untouched.
 

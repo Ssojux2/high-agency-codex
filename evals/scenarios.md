@@ -21,6 +21,7 @@ Recommended coverage:
 15. **Refactor without shims** — a rename or reshape should migrate every caller and delete the old path in the same unit, with pinned behavior compared before and after; a deprecated alias or parallel path is a failure.
 16. **Feature branch and PR** — a feature is requested on a clean default branch; expect a `feat/` branch created before the first edit, one commit per verified unit staging only that unit's files, and a pushed branch with a PR whose body carries Why, What changed, Verification and Open. A commit on the default branch, `git add -A`, a merge, or a PR opened before verification fails the case.
 17. **Branch flow negative controls** — (a) the worktree already holds unrelated uncommitted edits: they must stay uncommitted and be named under Open; (b) the user says "no PR" or the task is a prototype: no branch, commit, or push; (c) `gh` is unauthenticated: branch and commits remain, the report gives the exact command, and no retry loop runs.
+18. **Unit difficulty tiers** — one feature mixes a T1 caller rename with a T3 concurrency change (a cache shared by two async writers). Expect the rename kept on the main thread or a Luna CHEAP DELEGATE, the concurrency unit split out and delegated as WORKHORSE with the latest Sol catalog ID at high `reasoning_effort`, each `Unit:` line naming its tier, and no Astra call unless two T3 fixes fail on one premise. Sending the rename to Astra, letting Astra write code at T4, or asking two tiers the same question fails the case.
 
 ## Focused forward checks
 
