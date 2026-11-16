@@ -83,6 +83,22 @@ Every writing child follows `high-agency-unit`; see the handoff packet.
 
 Avoid multiple writing agents touching overlapping files.
 
+### Unit tiers
+
+`high-agency-unit` grades each unit T1–T4 by its hardest fact. When a unit is delegated or escalated, the tier sets the route, family and effort. Resolve the exact model ID from the current catalog as above and pass it with a supported `reasoning_effort` in the native spawn request; never put a family label in the spawn. If per-spawn model selection is unavailable, keep the host default and report the tier as unrouted.
+
+| Tier | Route / writer | Family / effort | Independent check |
+|---|---|---|---|
+| T1 mechanical | main thread; bulk → CHEAP DELEGATE | Luna / low | Luna verifier when a command proves it |
+| T2 standard | main thread or WORKHORSE | Sol / medium | main thread or Luna verifier |
+| T3 hard | WORKHORSE | Sol / high; Astra / high writes only when the hard reasoning cannot be isolated from the code | Luna runs the unit's check; the main thread reviews the diff against the checklist |
+| T4 frontier | STRONG REASONING sketches; units then run as T2/T3 | Astra / high–xhigh; max only if advertised, for a capability-critical final review | per the units' own tiers |
+
+- The hardest fact decides: one T3 fact makes the whole unit T3. If a unit mixes a T3 core with T1 bulk, split it.
+- Escalate one tier after one fix and one retest fail; a second failure sharing a premise at T3 goes to the T4 sketch with a compact packet (reproduction, failed hypotheses, the shared belief). Never run two tiers on the same question.
+- At T4, Astra never writes code: it returns the sketch (types, signatures, invariants, unit order), and Sol implements against it.
+- Fallbacks: Luna → Sol low → current main model; Sol → current main model; Astra → Sol high/xhigh → current main model. Apply the one-refresh/one-fallback budget, and report an unavailable tier instead of claiming it ran.
+
 ### Testing / verification
 
 - Checking specified acceptance conditions with targeted tests or direct inspection: latest available Luna with supported low effort.
@@ -171,9 +187,10 @@ Follow the high-agency-unit skill at <installed path>/skills/high-agency-unit/SK
 Outcome: <acceptance criteria this unit owns and their checks>
 Budget: <the preflight Impact: line and write boundary>
 Scope of proof: <touched | affected | broad>
+Tier: <T1–T4>; if the work proves harder than its tier, stop and report that under Open.
 Before returning, apply the over-implementation checklist to your diff.
 Do not switch branches, commit, push, or run gh; the main thread owns git.
-Return only the unit report (Unit / Files / Check / Cut / Open).
+Return only the unit report (Unit / Files / Check / Cut / Open), with the tier in the Unit line.
 ```
 
 If the child cannot load skills, paste the playbook steps, the checklist, and the report format from that file into the brief instead of the path.
